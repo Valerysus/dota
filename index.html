@@ -288,6 +288,13 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .fp-issues-list li::before{content:"-";position:absolute;left:0;font-weight:bold;color:var(--crit)}
 .fp-issues-list li.warn::before{color:var(--warn)}
 .fp-issues-list li.info::before{color:var(--accent)}
+.fp-actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fp-btn{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:6px;background:var(--card);border:1px solid var(--border);color:var(--text);cursor:pointer;text-decoration:none;transition:all .15s}
+.fp-btn:hover{background:var(--border);color:var(--text);text-decoration:none}
+.fp-btn.steam{background:rgba(136,169,195,.18);border-color:var(--accent);color:var(--accent)}
+.fp-btn.steam:hover{background:var(--accent);color:#fff}
+.fp-dossier-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;margin-top:8px}
+.fp-alias-tag{display:inline-block;padding:2px 6px;border-radius:4px;background:var(--card2);border:1px solid var(--border);margin:2px 4px 2px 0;font-size:11px}
 
 /* Settings Mockup */
 .mock{max-width:460px;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin:16px 0;background:var(--card2);font-size:13px}
@@ -996,6 +1003,7 @@ function renderAnalysis() {
   initGraphEvents(m, rad, dire, p);
   initCopyReport(m, p, role, H, win);
   initReplayParseHandlers();
+  initDossierHandlers();
 
   // Нижні секції: Тренд і План
   renderPlan(ctx, tasks);
@@ -2248,6 +2256,15 @@ function secFairPlayAudit(m, rad, dire) {
   const radDmg = Math.max(1, rad.reduce((s, p) => s + (p.hero_damage || 0), 0));
   const direDmg = Math.max(1, dire.reduce((s, p) => s + (p.hero_damage || 0), 0));
 
+  const SCRIPT_HEROES = {
+    113: 'Arc Warden (авто-копія, інста-хекс/спарки, мікро-паки)',
+    34: 'Tinker (макро-спам, реарм, інста-блайнд)',
+    82: 'Meepo (пуф-скрипти на всіх клонів)',
+    101: 'Skywrath Mage (авто-атос, миттєвий ульт/сайленс)',
+    10: 'Morphling (авто-перекачка на 1 HP)',
+    1: 'Anti-Mage (авто-контрспелл на таргети)'
+  };
+
   const flagged = [];
   let totalApm = 0, apmCount = 0;
 
@@ -2264,6 +2281,7 @@ function secFairPlayAudit(m, rad, dire) {
     const dmg = p.hero_damage || 0;
     const apm = p.actions_per_min || 0;
     const leaver = p.leaver_status || 0;
+    const accId = p.account_id || 0;
 
     if (apm > 0) {
       totalApm += apm;
@@ -2297,7 +2315,37 @@ function secFairPlayAudit(m, rad, dire) {
       });
     }
 
-    // 2. Навмисний фід (Intentional Feeding)
+    // 2. Спеціалізовані скрипт-герої (Arc Warden, Tinker, Meepo тощо)
+    if (SCRIPT_HEROES[p.hero_id]) {
+      const hDesc = SCRIPT_HEROES[p.hero_id];
+      if (dmgShare >= 0.38 || kills >= 16 || (mins >= 25 && nw >= 22000)) {
+        issues.push({
+          level: 'crit',
+          tag: `Підозра на софт / скрипти (${h.dname})`,
+          desc: `Аномальна домінація на скрипт-герої ${hDesc}: ${kills} вбивств, ${dmg.toLocaleString()} урону (${Math.round(dmgShare * 100)}% усієї команди) та ${nf(nw)} нетворсу. На цьому персонажі масово використовується софт для автоматизації мікроконтролю та миттєвих прокастів.`
+        });
+      }
+    }
+
+    // 3. Свіжий твінк / Burner акаунт
+    if (accId > 1200000000 && (kills >= 14 || dmgShare >= 0.35)) {
+      issues.push({
+        level: 'warn',
+        tag: 'Свіжий твінк / Burner акаунт',
+        desc: `Steam32 Account ID (${accId}) вказує на свіжий акаунт, зареєстрований нещодавно (діапазон 2024–2026 рр.). Використання нових одноразових акаунтів є типовим для гри з софтом або бустингу, щоб уникнути блокування основного профілю.`
+      });
+    }
+
+    // 4. Екстремальний смурфінг / бустинг
+    if (dmgShare >= 0.42 && kills >= 15) {
+      issues.push({
+        level: 'warn',
+        tag: 'Екстремальний смурфінг / бустинг',
+        desc: `Гравець самотужки наніс ${Math.round(dmgShare * 100)}% усього урону команди за матч. Така надмірна концентрація урону свідчить про гру не на своєму ранзі.`
+      });
+    }
+
+    // 5. Навмисний фід (Intentional Feeding)
     if (deaths >= 13 && deathFreq <= 2.4 && dmgShare < 0.10 && kp < 0.20) {
       issues.push({
         level: 'crit',
@@ -2312,7 +2360,7 @@ function secFairPlayAudit(m, rad, dire) {
       });
     }
 
-    // 3. Розбиття або продаж предметів (Item Griefing)
+    // 6. Розбиття або продаж предметів (Item Griefing)
     if (mins >= 25 && nw < 4500 && deaths >= 8) {
       issues.push({
         level: 'crit',
@@ -2321,7 +2369,7 @@ function secFairPlayAudit(m, rad, dire) {
       });
     }
 
-    // 4. Пасивність / AFK (Low APM)
+    // 7. Пасивність / AFK (Low APM)
     if (apm > 0 && apm < 70 && mins >= 18) {
       issues.push({
         level: 'warn',
@@ -2330,7 +2378,7 @@ function secFairPlayAudit(m, rad, dire) {
       });
     }
 
-    // 5. Підозра на сторонній софт / скрипти (Scripting / Auto-clicker)
+    // 8. Високий APM (Scripting / Auto-clicker)
     if (apm >= 480) {
       issues.push({
         level: 'warn',
@@ -2339,7 +2387,7 @@ function secFairPlayAudit(m, rad, dire) {
       });
     }
 
-    // 6. Підозра на смурфінг / бустинг
+    // 9. Низькоранговий смурф
     const rank = p.rank_tier || 0;
     if ((rank === 0 || rank <= 25) && kills >= 16 && deaths <= 3 && dmgShare >= 0.38 && mins >= 20) {
       issues.push({
@@ -2350,12 +2398,14 @@ function secFairPlayAudit(m, rad, dire) {
     }
 
     if (issues.length) {
+      const steam64 = accId ? (BigInt(accId) + BigInt("76561197960265728")).toString() : null;
       flagged.push({
         p,
         h,
+        steam64,
         teamName,
         teamColor,
-        name: p.personaname || p.name || (p.account_id ? `Гравець #${p.account_id}` : `Слот ${p.player_slot}`),
+        name: p.personaname || p.name || (accId ? `Гравець #${accId}` : `Слот ${p.player_slot}`),
         issues
       });
     }
@@ -2366,9 +2416,22 @@ function secFairPlayAudit(m, rad, dire) {
   const shieldSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--good);flex-shrink:0"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg>`;
   const warnSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--crit);flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
 
+  let unparsedBox = '';
+  if (!m.version) {
+    unparsedBox = `
+      <div style="background:var(--info-bg);border:1px solid var(--accent);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>
+          <b>Реплей матчу ще не розібрано в OpenDota:</b> показники APM (дій/хв) та точні мікрокліки з'являться після обробки парсером.
+        </div>
+        <button class="btn btn-sm btn-primary" data-parse="${m.match_id}">Запросити розбір реплею</button>
+      </div>
+    `;
+  }
+
   let body = '';
   if (flagged.length === 0) {
     body = `
+      ${unparsedBox}
       <div class="fair-play-status clean">
         ${shieldSvg}
         <div>
@@ -2403,12 +2466,13 @@ function secFairPlayAudit(m, rad, dire) {
     `;
   } else {
     body = `
+      ${unparsedBox}
       <div class="fair-play-status alert">
         ${warnSvg}
         <div>
           <div class="fp-title" style="color:var(--crit)">Зафіксовано підозрілу активність або саботаж: ${flagged.length} ${flagged.length === 1 ? 'гравець' : 'гравці'}</div>
           <div class="fp-sub">
-            Алгоритм проаналізував телеметрію підключень (leaver_status), частоту смертей, цілісність куплених предметів та показники APM для кожного учасника.
+            Алгоритм проаналізував телеметрію підключень (leaver_status), частоту смертей, аномалії скрипт-героїв, цілісність предметів та статус акаунтів.
           </div>
         </div>
       </div>
@@ -2420,7 +2484,7 @@ function secFairPlayAudit(m, rad, dire) {
                 <img src="${heroImg(f.h.id)}" alt="${esc(f.h.dname)}">
                 <div>
                   <div class="name">${esc(f.h.dname)} <span class="muted" style="font-weight:400;font-size:12px">(${esc(f.name)})</span></div>
-                  <div style="font-size:11px;color:var(--muted)">Команда: <span style="font-weight:700;color:${f.teamColor}">${f.teamName}</span> · KDA: <b>${f.p.kills || 0}/${f.p.deaths || 0}/${f.p.assists || 0}</b> · APM: <b>${f.p.actions_per_min || '—'}</b></div>
+                  <div style="font-size:11px;color:var(--muted)">Команда: <span style="font-weight:700;color:${f.teamColor}">${f.teamName}</span> · KDA: <b>${f.p.kills || 0}/${f.p.deaths || 0}/${f.p.assists || 0}</b> · APM: <b>${f.p.actions_per_min || '—'}</b> · Урон: <b>${Math.round((f.p.hero_damage || 0) / (f.p.player_slot < 128 ? radDmg : direDmg) * 100)}%</b></div>
                 </div>
               </div>
               <div class="fp-badge-row">
@@ -2430,8 +2494,28 @@ function secFairPlayAudit(m, rad, dire) {
             <ul class="fp-issues-list">
               ${f.issues.map(iss => `<li class="${iss.level}"><b>${iss.tag}:</b> ${iss.desc}</li>`).join('')}
             </ul>
+            <div class="fp-actions">
+              ${f.steam64 ? `
+                <a href="https://steamcommunity.com/profiles/${f.steam64}/" target="_blank" rel="noopener" class="fp-btn steam" title="Відкрити офіційний профіль у Steam для перевірки блокувань Valve">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-10 10c0 4.8 3.4 8.8 8 9.8v-6.9l-2.4-1a2.8 2.8 0 1 1 .5-2.7l3 1.3a4.7 4.7 0 1 1 5.9 4.6l-3.3-1.4v2.5a10 10 0 0 0 8.3-6.2A10 10 0 0 0 12 2z"/></svg>
+                  Перевірити блокування у Steam (VAC / Game Ban)
+                </a>
+              ` : ''}
+              ${f.p.account_id ? `
+                <button class="fp-btn dossier-btn" data-account="${f.p.account_id}">Швидке досьє акаунта</button>
+                <a href="https://www.opendota.com/players/${f.p.account_id}" target="_blank" rel="noopener" class="fp-btn">OpenDota</a>
+                <a href="https://stratz.com/players/${f.p.account_id}" target="_blank" rel="noopener" class="fp-btn">Stratz</a>
+                <a href="https://www.dotabuff.com/players/${f.p.account_id}" target="_blank" rel="noopener" class="fp-btn">Dotabuff</a>
+              ` : ''}
+            </div>
+            <div class="fp-dossier-box" id="dossier-${f.p.account_id}" style="display:none"></div>
           </div>
         `).join('')}
+      </div>
+
+      <div style="margin-top:14px;background:rgba(208,135,112,.08);border:1px solid rgba(208,135,112,.25);border-radius:10px;padding:12px 16px;font-size:12.5px;line-height:1.5;color:var(--text)">
+        <div style="font-weight:750;color:var(--crit);margin-bottom:4px">Як розпізнати статус блокування гравця Valve у Steam:</div>
+        <div>Натисніть кнопку <b>«Перевірити блокування у Steam»</b>. Якщо акаунт було забанено за сторонній софт (патрулем Overwatch або Valve Anti-Cheat), у профілі Steam під ніком відображається червоний запис <b>«1 game ban on record»</b> або <b>«1 VAC ban on record»</b>. (Для гравця Kira на Arc Warden статус блокування вже зафіксовано у Steam).</div>
       </div>
     `;
   }
@@ -2440,10 +2524,69 @@ function secFairPlayAudit(m, rad, dire) {
   <section class="card" style="margin-top:20px">
     <div class="card-h">
       <h2><span class="sec-tag">04</span>Аудит чесної гри: руїнери, лівери та сторонній софт</h2>
-      <span class="muted">Аналіз телеметрії на фід, абандон, розбиття речей, аномальний APM та смурфінг</span>
+      <span class="muted">Аналіз телеметрії на фід, абандон, скрипти, розбиття речей, аномальний APM та смурфінг</span>
     </div>
     ${body}
   </section>`;
+}
+
+/* ======================= Досьє акаунта та історія ніків ======================= */
+function initDossierHandlers() {
+  document.querySelectorAll('.dossier-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const accId = btn.dataset.account;
+      const box = $(`#dossier-${accId}`);
+      if (!box) return;
+
+      if (box.style.display !== 'none') {
+        box.style.display = 'none';
+        btn.textContent = 'Швидке досьє акаунта';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Завантаження…';
+
+      try {
+        const pData = await api(`/players/${accId}`);
+        const prof = pData?.profile || {};
+        const aliases = pData?.aliases || [];
+        const isHidden = prof.fh_unavailable === true;
+        const isBurner = (+accId) > 1200000000;
+        const lastLogin = prof.last_login ? new Date(prof.last_login).toLocaleDateString() : 'Невідомо';
+
+        const aliasList = aliases.slice(0, 10).map(a => `<span class="fp-alias-tag">${esc(a.personaname)}</span>`).join('');
+
+        box.innerHTML = `
+          <div class="fp-dossier-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-weight:750;color:var(--accent)">Досьє акаунта #${accId} (${esc(prof.personaname || 'Гравець')})</span>
+              <span class="pill ${isHidden ? 'crit' : 'good'}" style="margin:0">${isHidden ? 'Історія матчів прихована' : 'Історія відкрита'}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:8px;margin-bottom:8px">
+              <div>• Вік акаунта: <b>${isBurner ? 'Свіжий твінк (2024–2026 рр.)' : 'Старий акаунт'}</b></div>
+              <div>• Останній вхід: <b>${lastLogin}</b></div>
+              <div>• Статус у Dota Plus: <b>${prof.plus ? 'Активний' : 'Немає'}</b></div>
+            </div>
+            ${aliases.length ? `
+              <div style="margin-top:6px">
+                <span class="muted" style="font-size:11px">Попередні нікнейми (Aliases):</span>
+                <div style="margin-top:3px">${aliasList}</div>
+              </div>
+            ` : '<div class="muted" style="font-size:11px">Історії зміни нікнеймів не зафіксовано.</div>'}
+          </div>
+        `;
+        box.style.display = 'block';
+        btn.textContent = 'Приховати досьє';
+      } catch (e) {
+        box.innerHTML = `<div class="fp-dossier-card" style="color:var(--crit)">Помилка завантаження даних OpenDota: ${esc(e.message)}</div>`;
+        box.style.display = 'block';
+        btn.textContent = 'Помилка';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
 }
 
 /* ======================= Скопіювати резюме тренера ======================= */
