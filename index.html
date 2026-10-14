@@ -1471,7 +1471,7 @@ function calcPlayerImpact(pl, team, enemies, m, role) {
 /* Нормативи ключових предметів */
 const CORE_T = {
   bfury: [14 * 60 + 30, 'критично для розгону фарму на лінії та стаках'],
-  radiance: [16 * 60 + 30, 'пасивний AOE-урон та відхилення від атак'],
+  radiance: [16 * 60 + 30, 'пасивна AOE-шкода та відхилення від атак'],
   maelstrom: [13 * 60, 'ранній темп та зачистка пачок кріпів'],
   blink: [12 * 60 + 30, 'ініціація та раптовий врив на ворожих героїв'],
   black_king_bar: [22 * 60, 'імунітет до магії у командних битвах'],
@@ -1712,8 +1712,8 @@ function secHeroDetailCard(ctx) {
     <div class="tiles" style="margin-top:16px">
       ${tile('Імпакт матчу (IMP)', `${imp.score >= 0 ? '+' : ''}${imp.score}`, imp.score >= 20 ? 'good' : imp.score < 0 ? 'crit' : 'warn')}
       ${tile('Участь у вбивствах', kp + '%', kp < 40 ? 'warn' : 'good')}
-      ${tile('Частка урону команди', dmgShare + '%', dmgShare < 15 && role.core ? 'warn' : '')}
-      ${tile('Урон по спорудах', nf(p.tower_damage || 0))}
+      ${tile('Частка шкоди команди', dmgShare + '%', dmgShare < 15 && role.core ? 'warn' : '')}
+      ${tile('Шкода по спорудах', nf(p.tower_damage || 0))}
       ${tile('Observer / Sentry', `${wards.obs} / ${wards.sen}`)}
       ${tile('Золото / хв (GPM)', p.gold_per_min || 0)}
     </div>
@@ -2086,7 +2086,7 @@ function secDraftAnalysis(m, rad, dire) {
       </div>
       <div class="draft-row">
         <span class="l-val">${puR}</span>
-        <div class="name">Осадження / Пуш веж<div class="draft-meter"><div class="m-rad" style="width:${puR}%"></div><div class="m-dire" style="width:${puD}%"></div></div></div>
+        <div class="name">Пуш і шкода по спорудах<div class="draft-meter"><div class="m-rad" style="width:${puR}%"></div><div class="m-dire" style="width:${puD}%"></div></div></div>
         <span class="r-val">${puD}</span>
       </div>
       <div class="draft-row">
@@ -2706,13 +2706,13 @@ function generateDynamicOutcomeFactors(m, rad, dire, winRad, mins, swingStart, s
 
   // Фактор 3: Об'єкти та вежі
   if (winTowers >= 7 || winTD >= 12000) {
-    winFactors.push(`<b>Конвертація переваги в об'єкти:</b> знесено <b>${winTowers} веж</b> (${nf(winTD)} урону по будівлях), суперника затиснуто на хай-граунді.`);
+    winFactors.push(`<b>Конвертація переваги в об'єкти:</b> знесено <b>${winTowers} веж</b> (${nf(winTD)} шкоди по спорудах), суперника затиснуто на хай-граунді.`);
   } else {
     winFactors.push(`<b>Вирішальний пуш трону:</b> швидке завершення гри через центральну лінію після виграного тімфайту.`);
   }
 
   if (loseTD < 4500 || loseTowers <= 2) {
-    loseFactors.push(`<b>Нульовий тиск на будівлі:</b> знесено лише <b>${loseTowers} веж</b> (${nf(loseTD)} TD), окремі фраги не реалізувалися у захоплення території.`);
+    loseFactors.push(`<b>Нульовий тиск на споруди:</b> знесено лише <b>${loseTowers} веж</b> (${nf(loseTD)} TD), окремі фраги не реалізувалися у захоплення території.`);
   } else {
     loseFactors.push(`<b>Недостатній захист бази:</b> втрата ключових баражів без можливості провести повноцінний контратакувальний випад.`);
   }
@@ -2720,7 +2720,7 @@ function generateDynamicOutcomeFactors(m, rad, dire, winRad, mins, swingStart, s
   // Фактор 4: Керрі та віжен
   if (nwGap >= 3500) {
     winFactors.push(`<b>Економічне домінування кора (${esc(winH.dname)}):</b> відрив у <b>+${nf(nwGap)} нетворсу</b> над ${esc(loseH.dname)} (GPM ${topWin.gold_per_min} vs ${topLose.gold_per_min}).`);
-    loseFactors.push(`<b>Просідання керрі (${esc(loseH.dname)}):</b> відставання на <b>-${nf(nwGap)} нетворсу</b> не дозволило змагатися за урон у фінальних битвах.`);
+    loseFactors.push(`<b>Просідання керрі (${esc(loseH.dname)}):</b> відставання на <b>-${nf(nwGap)} нетворсу</b> не дозволило змагатися за шкоду у фінальних битвах.`);
   }
 
   if (winObs >= 10 && winObs >= loseObs * 1.3) {
@@ -2821,11 +2821,11 @@ function secMatchOutcome(m, rad, dire) {
     const parts = [];
     if (r.core) {
       if (td >= 8000) parts.push(`Колосальний пуш (${nf(td)} TD) — особисто зламав ключові вежі.`);
-      else if (td >= 3000) parts.push(`Впевнений урон по будівлях (${nf(td)} TD).`);
+      else if (td >= 3000) parts.push(`Впевнена шкода по спорудах (${nf(td)} TD).`);
       else if (td < 500) parts.push(`Нульовий пуш веж (${td} TD) — не реалізував розміни.`);
 
-      if (dmg >= 30) parts.push(`Головна ударна сила команди (${dmg}% загального урону).`);
-      else if (dmg < 18) parts.push(`Низька частка урону (${dmg}%) для кор-позиції.`);
+      if (dmg >= 30) parts.push(`Головна ударна сила команди (${dmg}% загальної шкоди).`);
+      else if (dmg < 18) parts.push(`Низька частка шкоди (${dmg}%) для кор-позиції.`);
 
       if (nw < 4000 && mins >= 25) parts.push(`Критичний недофарм (${nf(nw)} на ${Math.round(mins)} хв) — повна втрата темпу.`);
       else if (deaths <= 3 && kills >= 10) parts.push(`Безпомилкова гра: ${kills} кілів при лише ${deaths} смертях.`);
@@ -2840,7 +2840,7 @@ function secMatchOutcome(m, rad, dire) {
     else if (deaths >= 9) parts.push(`Забагато смертей (${deaths}), просідання по позиціонуванню.`);
 
     if (!parts.length) {
-      parts.push(`${kp}% участі в бійках, ${dmg}% урону команди, ${nf(nw)} нетворсу.`);
+      parts.push(`${kp}% участі в бійках, ${dmg}% шкоди команди, ${nf(nw)} нетворсу.`);
     }
     const desc = parts.join(' ');
 
@@ -2856,7 +2856,7 @@ function secMatchOutcome(m, rad, dire) {
           <div class="imp-card-stats">
             <span>KDA: <b>${item.pl.kills}/${item.pl.deaths}/${item.pl.assists}</b></span>
             <span>Нетворс: <b>${nf(item.pl.net_worth || (item.pl.gold_per_min * mins))}</b></span>
-            <span>Урон: <b>${Math.round(item.dmgShare*100)}%</b></span>
+            <span>Шкода: <b>${Math.round(item.dmgShare*100)}%</b></span>
             <span>Вежі: <b>${nf(item.td)}</b></span>
           </div>
           <div class="imp-card-desc">${desc}</div>
@@ -2881,7 +2881,7 @@ function secMatchOutcome(m, rad, dire) {
     <!-- Таблиця індивідуального імпакту кожного гравця (Stratz IMP) -->
     <div style="margin-top:20px">
       <div style="font-weight:750;font-size:15px;margin-bottom:6px">Індивідуальний вплив на результат (Stratz-style IMP Score)</div>
-      <p class="sub" style="margin-bottom:12px">Оцінка від +50 (вирішальний MVP) до -50 (фідинг / відсутність внеску) на основі урону, осадження, KDA та вардингу.</p>
+      <p class="sub" style="margin-bottom:12px">Оцінка від +50 (вирішальний MVP) до -50 (фідинг / відсутність внеску) на основі шкоди, пушу споруд, KDA та вардингу.</p>
       
       <div class="imp-grid">
         <div class="imp-col">
@@ -3004,7 +3004,7 @@ function secFairPlayAudit(m, rad, dire) {
         issues.push({
           level: 'warn',
           tag: `Атипова телеметрія (${h.dname})`,
-          desc: `Виняткова індивідуальна результативність на герої зі складним мікроконтролем (${hDesc}): ${kills} вбивств, ${dmg.toLocaleString()} урону (${Math.round(dmgShare * 100)}% команди) та ${nf(nw)} нетворсу. Рекомендується перегляд реплею для оцінки мікроконтролю та швидкості реакції.` + HEURISTIC_NOTE
+          desc: `Виняткова індивідуальна результативність на герої зі складним мікроконтролем (${hDesc}): ${kills} вбивств, ${dmg.toLocaleString()} шкоди (${Math.round(dmgShare * 100)}% команди) та ${nf(nw)} нетворсу. Рекомендується перегляд реплею для оцінки мікроконтролю та швидкості реакції.` + HEURISTIC_NOTE
         });
       }
     }
@@ -3014,16 +3014,16 @@ function secFairPlayAudit(m, rad, dire) {
       issues.push({
         level: 'info',
         tag: 'Новий акаунт Steam (Діапазон 2024–2026)',
-        desc: `Steam32 Account ID (${accId}) вказує на свіжий акаунт. При високих ігрових показниках (${kills} вбивств, ${Math.round(dmgShare * 100)}% урону) це типова ознака смурфінгу (досвідчений гравець у нижчому рейтинговому дивізіоні).` + HEURISTIC_NOTE
+        desc: `Steam32 Account ID (${accId}) вказує на свіжий акаунт. При високих ігрових показниках (${kills} вбивств, ${Math.round(dmgShare * 100)}% шкоди) це типова ознака смурфінгу (досвідчений гравець у нижчому рейтинговому дивізіоні).` + HEURISTIC_NOTE
       });
     }
 
-    // 4. Екстремальний внесок в урон команди (смурфінг)
+    // 4. Екстремальний внесок у шкоду команди (смурфінг)
     if (dmgShare >= 0.44 && kills >= 15) {
       issues.push({
         level: 'warn',
-        tag: 'Екстремальний внесок в урон команди',
-        desc: `Гравець самотужки наніс ${Math.round(dmgShare * 100)}% усього урону команди за матч. Така надмірна концентрація свідчить про значну невідповідність рівня гри поточному лобі.` + HEURISTIC_NOTE
+        tag: 'Екстремальний внесок у шкоду команди',
+        desc: `Гравець самотужки завдав ${Math.round(dmgShare * 100)}% усієї шкоди команди за матч. Така надмірна концентрація свідчить про значну невідповідність рівня гри поточному лобі.` + HEURISTIC_NOTE
       });
     }
 
@@ -3032,7 +3032,7 @@ function secFairPlayAudit(m, rad, dire) {
       issues.push({
         level: 'crit',
         tag: 'Аномальна частота смертей (Feeding)',
-        desc: `Зафіксовано ${deaths} смертей (у середньому загибель кожні ${deathFreq.toFixed(1)} хв) при лише ${Math.round(dmgShare * 100)}% урону команди та ${Math.round(kp * 100)}% участі у сутичках. Критична віддача ресурсів супернику.`
+        desc: `Зафіксовано ${deaths} смертей (у середньому загибель кожні ${deathFreq.toFixed(1)} хв) при лише ${Math.round(dmgShare * 100)}% шкоди команди та ${Math.round(kp * 100)}% участі у сутичках. Критична віддача ресурсів супернику.`
       });
     } else if (deaths >= 16) {
       issues.push({
@@ -3105,7 +3105,7 @@ function secFairPlayAudit(m, rad, dire) {
     <div style="background:rgba(94,129,172,.08);border:1px solid rgba(94,129,172,.25);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:12.5px;line-height:1.5;color:var(--text);display:flex;gap:12px;align-items:flex-start">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent);flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
       <div>
-        <b>Дисклеймер аудиту:</b> Наведений аналіз ґрунтується виключно на статистичній телеметрії реплею (темп кліків, атиповий урон, абандони, таймінги смертей). Офіційні рішення щодо блокування акаунтів (Game Ban / VAC Ban) ухвалюються виключно системою Valve Overwatch та античитом. Скористайтеся посиланнями на офіційні профілі Steam для верифікації актуального статусу.
+        <b>Дисклеймер аудиту:</b> Наведений аналіз ґрунтується виключно на статистичній телеметрії реплею (темп кліків, атипова шкода, абандони, таймінги смертей). Офіційні рішення щодо блокування акаунтів (Game Ban / VAC Ban) ухвалюються виключно системою Valve Overwatch та античитом. Скористайтеся посиланнями на офіційні профілі Steam для верифікації актуального статусу.
       </div>
     </div>
   `;
@@ -3156,7 +3156,7 @@ function secFairPlayAudit(m, rad, dire) {
         <div>
           <div class="fp-title" style="color:var(--crit)">Зафіксовано статистичні аномалії телеметрії: ${flagged.length} ${flagged.length === 1 ? 'гравець' : 'гравці'}</div>
           <div class="fp-sub">
-            Виявлено незвичні патерни телеметрії (технічний вихід із гри, атипова частка урону або незвична частота дій). Перегляньте картки нижче.
+            Виявлено незвичні патерни телеметрії (технічний вихід із гри, атипова частка шкоди або незвична частота дій). Перегляньте картки нижче.
           </div>
         </div>
       </div>
@@ -3168,7 +3168,7 @@ function secFairPlayAudit(m, rad, dire) {
                 <img src="${heroImg(f.h.id)}" alt="${esc(f.h.dname)}">
                 <div>
                   <div class="name">${esc(f.h.dname)} <span class="muted" style="font-weight:400;font-size:12px">(${esc(f.name)})</span></div>
-                  <div style="font-size:12px;color:var(--muted)">Команда: <span style="font-weight:700;color:${f.teamColor}">${f.teamName}</span> · KDA: <b>${f.p.kills || 0}/${f.p.deaths || 0}/${f.p.assists || 0}</b> · APM: <b>${f.p.actions_per_min || '—'}</b> · Урон: <b>${Math.round((f.p.hero_damage || 0) / (f.p.player_slot < 128 ? radDmg : direDmg) * 100)}%</b></div>
+                  <div style="font-size:12px;color:var(--muted)">Команда: <span style="font-weight:700;color:${f.teamColor}">${f.teamName}</span> · KDA: <b>${f.p.kills || 0}/${f.p.deaths || 0}/${f.p.assists || 0}</b> · APM: <b>${f.p.actions_per_min || '—'}</b> · Шкода: <b>${Math.round((f.p.hero_damage || 0) / (f.p.player_slot < 128 ? radDmg : direDmg) * 100)}%</b></div>
                 </div>
               </div>
               <div class="fp-badge-row">
@@ -3430,7 +3430,7 @@ async function getHeroBenchmarks(heroId) {
 }
 
 function formatSpellName(sp) {
-  if (!sp || sp === 'null') return 'Звичайна атака (фізичний урон)';
+  if (!sp || sp === 'null') return 'Звичайна атака (фізична шкода)';
   return sp.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
@@ -3447,9 +3447,9 @@ function secBenchmarks({ p, bm, H }) {
     ['last_hits_per_min', 'LH / хв', v => (v || 0).toFixed(1), 'Кріпів за хвилину'],
     ['lhten', 'LH@10', v => nf(v), 'Добивань на 10:00'],
     ['kills_per_min', 'Вбивства / хв', v => (v || 0).toFixed(2), 'Кілів за хвилину'],
-    ['hero_damage_per_min', 'Шкода / хв', v => nf(v), 'Урон по героях'],
+    ['hero_damage_per_min', 'Шкода / хв', v => nf(v), 'Шкода по героях'],
     ['hero_healing_per_min', 'Лікування / хв', v => nf(v), 'Лікування союзників'],
-    ['tower_damage', 'Шкода по вежах', v => nf(v), 'Урон по будівлях'],
+    ['tower_damage', 'Шкода по спорудах', v => nf(v), 'Шкода по спорудах'],
     ['stuns_per_min', 'Стани / хв', v => (v || 0).toFixed(2), 'Секунд стану за хв']
   ].filter(([k]) => bm[k] && bm[k].raw != null && !(['hero_healing_per_min','stuns_per_min'].includes(k) && !bm[k].raw));
 
@@ -3464,7 +3464,7 @@ function secBenchmarks({ p, bm, H }) {
   const worst = sorted[0], best = sorted[sorted.length - 1];
   const worstVal = bm[worst[0]].raw || 0;
   const worstTxt = (worst[0] === 'tower_damage' && worstVal === 0) 
-    ? `${worst[1]} (0 урону по будівлях)` 
+    ? `${worst[1]} (0 шкоди по спорудах)` 
     : `${worst[1]} (${pc(bm[worst[0]].pct)}%)`;
 
   const renderedRows = rows.map(([k, lab, f, fullTitle]) => {
@@ -3496,7 +3496,7 @@ function secBenchmarks({ p, bm, H }) {
 
     let desc = '';
     if (k === 'tower_damage' && val === 0) {
-      desc = `0 урону по будівлях (середнє на ${esc(H.dname)}: <b>${f(med)}</b>) — жодного удару по вежах за весь матч. Критична відсутність тиску на лінії.`;
+      desc = `0 шкоди по спорудах (середнє на ${esc(H.dname)}: <b>${f(med)}</b>) — жодного удару по спорудах за весь матч. Критична відсутність тиску на лінії.`;
     } else if (k === 'hero_healing_per_min' && val === 0) {
       desc = `0 лікування союзників за хвилину (середнє: <b>${f(med)}</b>).`;
     } else if (!isGood) {
@@ -3833,7 +3833,7 @@ function buildTacticalDeathAudit(ctx) {
   const topSpellsHtml = topSpells.length ? `
     <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin:12px 0;font-size:13px;line-height:1.6">
       <div style="font-weight:750;color:var(--accent);margin-bottom:4px">Найнебезпечніші здібності ворогів проти тебе:</div>
-      <div>${topSpells.map(([sp, dmg]) => `• <b>${esc(formatSpellName(sp))}</b>: завдала <b>${nf(dmg)} урону</b>`).join('<br>')}</div>
+      <div>${topSpells.map(([sp, dmg]) => `• <b>${esc(formatSpellName(sp))}</b>: завдала <b>${nf(dmg)} шкоди</b>`).join('<br>')}</div>
     </div>
   ` : '';
 
@@ -3870,7 +3870,7 @@ function buildTacticalDeathAudit(ctx) {
         reasons.push(`<b>Стріла з туману війни (Sacred Arrow):</b> далекобійне оглушення з темряви з наступним берстом від Starfall. Сталося через відсутність огляду лісу або прямолінійний біг.`);
         advice = `Постійно оновлювати Sentry-варди біля річки, щоб бачити підхід Mirana, рухатися зигзагами та ховатися за крипами.`;
       } else if (killerShort.includes('ringmaster')) {
-        reasons.push(`<b>Магічний прокаст Ringmaster:</b> уловлювання коліщатком Wheel of Wonder та чистий урон від батога Impalement.`);
+        reasons.push(`<b>Магічний прокаст Ringmaster:</b> уловлювання коліщатком Wheel of Wonder та чиста шкода від батога Impalement.`);
         advice = `Не дивитися на колесо Ringmaster (відвертати героя спиною) та вчасно купувати BKB / Cloak / Glimmer.`;
       } else if (killerShort.includes('spirit_breaker')) {
         reasons.push(`<b>Глобальний розгін (Charge of Darkness):</b> врив через усю карту та моментальний контроль Nether Strike.`);
@@ -3879,7 +3879,7 @@ function buildTacticalDeathAudit(ctx) {
         reasons.push(`<b>Rupture + Thirst:</b> накладання Rupture унеможливило втечу, а ворог добив на максимальній швидкості.`);
         advice = `Проти Rupture обов'язково носити Town Portal Scroll (робити TP до бази, якщо у ворогів немає стану) або купувати Linken's Sphere / Eul.`;
       } else if (killerShort.includes('sven')) {
-        reasons.push(`<b>Фізичний вибух BKB Sven:</b> стрибок зі Storm Hammer під God's Strength, урон Cleave знищив за 2–3 удари.`);
+        reasons.push(`<b>Фізичний вибух BKB Sven:</b> стрибок зі Storm Hammer під God's Strength, шкода Cleave знищила за 2–3 удари.`);
         advice = `Своєчасно тиснути Ghost Scepter, Force Staff або Eul, розриваючи контакт на час дії BKB.`;
       } else if (killerShort.includes('lion') || killerShort.includes('shadow_shaman')) {
         reasons.push(`<b>Миттєвий дизейбл (Hex + Stun):</b> потрапляння під довгий контроль без можливості натиснути власні здібності.`);
@@ -3954,7 +3954,7 @@ function buildTacticalDeathAudit(ctx) {
         <span class="pill crit">Тактичний аудит смертей</span>
         <span>Чому саме ти віддавав життя (${d} смертей за матч · одиночних: <b>${ctx.soloDeaths ?? 0}</b>)</span>
       </div>
-      <p class="sub" style="margin:2px 0 10px">Аналіз ворожих кілерів, отриманого урону та помилок таймінгу за телеметрією реплею.</p>
+      <p class="sub" style="margin:2px 0 10px">Аналіз ворожих кілерів, отриманої шкоди та помилок таймінгу за телеметрією реплею.</p>
       ${killersHtml}
       ${topSpellsHtml}
       ${timelineHtml}
@@ -4025,11 +4025,11 @@ function secMacro(ctx) {
     // Силовий саппорт або Snapfire
     out += issue('warn', `Позиціонування у командних битвах (${H.dname})`,
       `<p>${H.dname} володіє колосальним радіусом застосування здібностей (Mortimer Kisses діє на 3000 ренджу, Scatterblast на 800). Твоє завдання у файті — <b>стояти у тумані війни (Fog of War) або на височині</b>, на відстані 1000+ за спинами своїх корів.</p>
-       <p>Велика кількість смертей (${d}) свідчить про те, що ти опинявся в центрі сутички й потрапляв під перший фокус ворожих ініціаторів або BKB-керрі. У цій грі обов'язково був потрібен <b>Force Staff</b> (розрив дистанції) або <b>Ghost Scepter / Glimmer Cape</b> для порятунку від фізичного урону.</p>`);
+       <p>Велика кількість смертей (${d}) свідчить про те, що ти опинявся в центрі сутички й потрапляв під перший фокус ворожих ініціаторів або BKB-керрі. У цій грі обов'язково був потрібен <b>Force Staff</b> (розрив дистанції) або <b>Ghost Scepter / Glimmer Cape</b> для порятунку від фізичної шкоди.</p>`);
     addTask(85, `Тримати дистанцію 1000+ ренджу у файтах: чекати початку ініціації у тумані війни, купувати Force Staff / Glimmer.`);
   } else if (role.core && (p.tower_damage || 0) < 1500) {
-    out += issue('warn', `Нульовий пресинг будівель: лише ${nf(p.tower_damage || 0)} урону по вежах`,
-      `<p>У Dota 2 гру виграють зламані вежі, а не фраги. Після кожної виграної бійки чи фраг-моменту ти повертався у ліс замість пушу найближчої лінії та нанесення урону по будівлях.</p>`);
+    out += issue('warn', `Нульовий пресинг споруд: лише ${nf(p.tower_damage || 0)} шкоди по спорудах`,
+      `<p>У Dota 2 гру виграють зламані споруди, а не фраги. Після кожної виграної бійки чи фраг-моменту ти повертався у ліс замість пушу найближчої лінії та нанесення шкоди по спорудах.</p>`);
     addTask(85, `Після кожного виграного файту — <b>бити вежу або забирати Рошана протягом 30 секунд</b>.`);
   }
 
