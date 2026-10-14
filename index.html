@@ -419,7 +419,10 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .death-killer-name{font-size:13px;font-weight:700}
 .death-killer-stat{font-size:12px;color:var(--crit);font-weight:600}
 .death-timeline{display:flex;flex-direction:column;gap:10px;margin-top:12px}
-.death-item{display:flex;gap:12px;align-items:flex-start;background:var(--card2);border:1px solid var(--border);border-left:4px solid var(--crit);border-radius:10px;padding:10px 14px;font-size:13px;line-height:1.55}
+.death-item{display:flex;gap:12px;align-items:flex-start;background:var(--card2);border:1px solid var(--border);border-left:4px solid var(--crit);border-radius:10px;padding:10px 14px;font-size:13px;line-height:1.55;cursor:pointer;transition:background .2s,border-color .2s}
+.death-item:focus-visible, .death-item.highlighted{background:var(--card);outline:2px solid var(--accent);outline-offset:2px}
+.graph-death-dot{cursor:pointer;transition:r .15s ease,stroke .15s ease;outline:none}
+.graph-death-dot:focus-visible, .graph-death-dot.active, .graph-death-dot:hover{r:8px!important;stroke:var(--accent)!important;stroke-width:2.5px!important}
 .death-time-badge{font-size:12px;font-weight:800;padding:3px 8px;border-radius:6px;background:var(--crit-bg);color:var(--crit);font-variant-numeric:tabular-nums;white-space:nowrap;margin-top:2px}
 .death-item-body{flex:1;min-width:0}
 .death-item-head{display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:3px}
@@ -1203,6 +1206,16 @@ function getMapConsequence(deathTime, playerSlot, objectives) {
   if (!windowEvents.length) return null;
   windowEvents.sort((a, b) => a.time - b.time);
   return windowEvents[0].text;
+}
+
+function calcDeathCost(deathTime, playerSlot, radiantGoldAdv, maxMins) {
+  if (!Array.isArray(radiantGoldAdv) || !radiantGoldAdv.length) return null;
+  const isRad = playerSlot < 128;
+  const M = Math.floor(deathTime / 60);
+  const M2 = Math.min((maxMins != null ? maxMins : radiantGoldAdv.length - 1), M + 2);
+  const advM = isRad ? (radiantGoldAdv[M] || 0) : -(radiantGoldAdv[M] || 0);
+  const advM2 = isRad ? (radiantGoldAdv[M2] || 0) : -(radiantGoldAdv[M2] || 0);
+  return advM2 - advM;
 }
 
 const PERMS_5 = (() => {
@@ -2091,6 +2104,27 @@ function initGraphEvents(m, rad, dire, curPlayer) {
       return `<circle cx="${x(+mi).toFixed(1)}" cy="${y(v).toFixed(1)}" r="4" fill="var(--accent)" stroke="var(--bg)" stroke-width="1.5"></circle>`;
     }).join('');
 
+    // Смерті обраного героя на графіку переваги (Task B3)
+    const curPlayerHeroName = hero(curPlayer.hero_id).name;
+    const enemyList = curPlayer.player_slot < 128 ? dire : rad;
+    const curPlayerDeaths = (curPlayer.deaths_log && curPlayer.deaths_log.length)
+      ? curPlayer.deaths_log
+      : enemyList.flatMap(e => (e.kills_log || []).filter(k => k.key === curPlayerHeroName).map(k => ({ time: k.time, key: hero(e.hero_id).name }))).sort((a,b) => a.time - b.time);
+
+    const deathCircles = curPlayerDeaths.map((d, idx) => {
+      const t = d.time;
+      const mMin = Math.max(0, Math.min(N - 1, Math.floor(t / 60)));
+      const v = arr[mMin] || 0;
+      const dType = classifyDeath(t, curPlayer.player_slot, allPlayers);
+      const killerShort = (d.key || '').replace('npc_dota_hero_', '');
+      const kHero = Object.values(state.heroes).find(h => h.short === killerShort) || { dname: killerShort };
+      const reasonText = `${dType}${kHero.dname ? ' від ' + kHero.dname : ''}`;
+      const ariaLabel = `Смерть, хвилина ${mMin}, причина ${reasonText}`;
+      const cxVal = x(t / 60).toFixed(1);
+      const cyVal = y(v).toFixed(1);
+      return `<circle class="graph-death-dot" data-death-idx="${idx}" cx="${cxVal}" cy="${cyVal}" r="5" fill="var(--crit)" stroke="#ffffff" stroke-width="1.8" tabindex="0" role="button" aria-label="${esc(ariaLabel)}" data-tip="Смерть #${idx + 1} (${fmtT(t)}): ${esc(reasonText)}"></circle>`;
+    }).join('');
+
     const stepMin = mins > 40 ? 10 : 5;
     const timeLabels = [];
     for (let mi = 0; mi <= mins; mi += stepMin) {
@@ -2114,6 +2148,7 @@ function initGraphEvents(m, rad, dire, curPlayer) {
       <polygon points="${direPts}" fill="url(#gradDire)" />
       <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
       ${eventCircles}
+      ${deathCircles}
       ${timeLabels.join('')}
       <line id="svgCursorLine" x1="0" x2="0" y1="${padY}" y2="${220 - padY}" stroke="var(--text)" stroke-width="1.2" stroke-dasharray="2,2" opacity="0"></line>
     `;
@@ -2122,6 +2157,7 @@ function initGraphEvents(m, rad, dire, curPlayer) {
       <span><span class="dot" style="background:var(--good)"></span> Зона Radiant (перевага)</span>
       <span><span class="dot" style="background:var(--crit)"></span> Зона Dire (перевага)</span>
       <span><span class="dot" style="background:var(--accent)"></span> Ключові події на карті</span>
+      <span><span class="dot" style="background:var(--crit);border:1px solid #fff"></span> Смерті обраного героя</span>
     `;
 
     svg.onmousemove = e => {
@@ -2147,6 +2183,63 @@ function initGraphEvents(m, rad, dire, curPlayer) {
       const cLine = $('#svgCursorLine');
       if (cLine) cLine.setAttribute('opacity', '0');
     };
+
+    // Обробники точок смертей на графіку
+    svg.querySelectorAll('.graph-death-dot').forEach(dot => {
+      const idx = dot.dataset.deathIdx;
+      const showDotTip = () => {
+        tip.innerHTML = dot.dataset.tip;
+        tip.style.left = dot.getAttribute('cx') + 'px';
+        tip.style.top = (parseFloat(dot.getAttribute('cy')) - 26) + 'px';
+        tip.classList.add('show');
+      };
+      const highlight = () => {
+        svg.querySelectorAll('.graph-death-dot').forEach(d => d.classList.remove('active'));
+        dot.classList.add('active');
+        showDotTip();
+        document.querySelectorAll('.death-item').forEach(c => c.classList.remove('highlighted'));
+        const card = document.getElementById(`death-card-${idx}`);
+        if (card) {
+          card.classList.add('highlighted');
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      };
+      dot.addEventListener('mouseenter', showDotTip);
+      dot.addEventListener('mouseleave', () => tip.classList.remove('show'));
+      dot.addEventListener('click', highlight);
+      dot.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          highlight();
+        }
+      });
+    });
+
+    // Підв'язка карток смертей до точок на графіку
+    document.querySelectorAll('.death-item').forEach(card => {
+      const idx = card.dataset.deathIdx;
+      const highlightFromCard = () => {
+        document.querySelectorAll('.death-item').forEach(c => c.classList.remove('highlighted'));
+        card.classList.add('highlighted');
+        const dot = svg.querySelector(`.graph-death-dot[data-death-idx="${idx}"]`);
+        if (dot) {
+          svg.querySelectorAll('.graph-death-dot').forEach(d => d.classList.remove('active'));
+          dot.classList.add('active');
+          dot.focus();
+          tip.innerHTML = dot.dataset.tip;
+          tip.style.left = dot.getAttribute('cx') + 'px';
+          tip.style.top = (parseFloat(dot.getAttribute('cy')) - 26) + 'px';
+          tip.classList.add('show');
+        }
+      };
+      card.addEventListener('click', highlightFromCard);
+      card.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          highlightFromCard();
+        }
+      });
+    });
   }
 
   function renderWinProbGraph() {
@@ -3654,8 +3747,13 @@ function buildTacticalDeathAudit(ctx) {
         advice = `Тримати позицію позаду ініціаторів команди.`;
       }
 
+      const cost = calcDeathCost(t, p.player_slot, ctx.m.radiant_gold_adv, mins);
+      const costHtml = cost != null
+        ? `<div class="death-cost" style="font-size:12px;color:var(--muted);margin-top:4px">Ціна: <b>${cost > 0 ? '+' : ''}${nf(cost)} золота команди за 2 хв</b></div>`
+        : '';
+
       return `
-        <div class="death-item">
+        <div class="death-item" id="death-card-${i}" data-death-idx="${i}" tabindex="0" role="button" aria-label="Смерть #${i + 1} на ${fmtT(t)}">
           <div class="death-time-badge">${fmtT(t)}</div>
           <div class="death-item-body">
             <div class="death-item-head">
@@ -3663,6 +3761,7 @@ function buildTacticalDeathAudit(ctx) {
               <span>Смерть #${i + 1} від ${esc(kHero.dname)}</span>
             </div>
             <div class="death-item-reason">${reasons.join(' ')}</div>
+            ${costHtml}
             ${advice ? `<div class="death-item-tip"><b>Порада тренера:</b> ${advice}</div>` : ''}
           </div>
         </div>
