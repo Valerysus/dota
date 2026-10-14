@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os
+import os, re, shutil, subprocess, sys, tempfile
 """
 Generator for Dota 2 AI Coach Single-File Web App
 Includes:
@@ -462,9 +462,21 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
       </div>
     </div>
     <div style="display:flex;gap:10px;align-items:center">
+      <button class="btn btn-sm" id="apiKeyBtn" type="button" title="Налаштування OpenDota API ключа">API Ключ</button>
       <button class="btn btn-sm" id="themeBtn" title="Перемкнути тему">Тема: Світла</button>
     </div>
   </header>
+  <div id="apiKeyModal" style="display:none;margin-bottom:14px;padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:10px">
+    <div style="font-weight:700;font-size:13px;margin-bottom:8px">Налаштування OpenDota API Ключа</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input id="apiKeyInput" type="text" placeholder="Вставте ваш api_key (необов'язково)" style="flex:1;min-width:240px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+      <button class="btn btn-sm btn-primary" id="saveApiKeyBtn" type="button">Зберегти</button>
+      <button class="btn btn-sm" id="clearApiKeyBtn" type="button">Очистити</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px">
+      Ключ зберігається у вашому браузері (localStorage) відкритим текстом. Не вводьте його на чужих комп'ютерах.
+    </div>
+  </div>
 
   <section class="card">
     <form class="search" id="searchForm" autocomplete="off" onsubmit="return false;">
@@ -548,7 +560,7 @@ async function api(path, opts = {}) {
       if (attempt < 2) await sleep(800 * (attempt + 1));
     }
   }
-  throw lastErr;
+  throw lastErr || new Error('Ліміт запитів OpenDota (HTTP 429). Зачекайте хвилину або додайте API-ключ.');
 }
 
 async function loadConstants() {
@@ -2582,6 +2594,8 @@ function secMatchOutcome(m, rad, dire) {
 
 /* ======================= 04. Аудит дисципліни матчу та спортивної чесності ======================= */
 function secFairPlayAudit(m, rad, dire) {
+  const HEURISTIC_NOTE = ' Це евристична оцінка за статистикою, а не доказ порушення.';
+  const NEW_ACCOUNT_ID_THRESHOLD = 1200000000; // приблизна межа, не точна дата реєстрації
   const dur = m.duration || 0;
   const mins = Math.max(1, dur / 60);
   const players = m.players || [];
@@ -2634,7 +2648,7 @@ function secFairPlayAudit(m, rad, dire) {
       issues.push({
         level: 'crit',
         tag: 'Abandoned (Покинув матч)',
-        desc: 'Гравець навмисно від'єднався і покинув гру, отримавши офіційне технічне покарання Abandoned.'
+        desc: "Гравець навмисно від'єднався і покинув гру, отримавши офіційне технічне покарання Abandoned."
       });
     } else if (leaver === 3) {
       issues.push({
@@ -2657,17 +2671,17 @@ function secFairPlayAudit(m, rad, dire) {
         issues.push({
           level: 'warn',
           tag: `Атипова телеметрія (${h.dname})`,
-          desc: `Виняткова індивідуальна результативність на герої зі складним мікроконтролем (${hDesc}): ${kills} вбивств, ${dmg.toLocaleString()} урону (${Math.round(dmgShare * 100)}% команди) та ${nf(nw)} нетворсу. Рекомендується перегляд реплею для оцінки мікроконтролю та швидкості реакції.`
+          desc: `Виняткова індивідуальна результативність на герої зі складним мікроконтролем (${hDesc}): ${kills} вбивств, ${dmg.toLocaleString()} урону (${Math.round(dmgShare * 100)}% команди) та ${nf(nw)} нетворсу. Рекомендується перегляд реплею для оцінки мікроконтролю та швидкості реакції.` + HEURISTIC_NOTE
         });
       }
     }
 
     // 3. Свіжий акаунт при високій результативності
-    if (accId > 1200000000 && (kills >= 14 || dmgShare >= 0.35)) {
+    if (accId > NEW_ACCOUNT_ID_THRESHOLD && (kills >= 14 || dmgShare >= 0.35)) {
       issues.push({
         level: 'info',
         tag: 'Новий акаунт Steam (Діапазон 2024–2026)',
-        desc: `Steam32 Account ID (${accId}) вказує на свіжий акаунт. При високих ігрових показниках (${kills} вбивств, ${Math.round(dmgShare * 100)}% урону) це типова ознака смурфінгу (досвідчений гравець у нижчому рейтинговому дивізіоні).`
+        desc: `Steam32 Account ID (${accId}) вказує на свіжий акаунт. При високих ігрових показниках (${kills} вбивств, ${Math.round(dmgShare * 100)}% урону) це типова ознака смурфінгу (досвідчений гравець у нижчому рейтинговому дивізіоні).` + HEURISTIC_NOTE
       });
     }
 
@@ -2676,7 +2690,7 @@ function secFairPlayAudit(m, rad, dire) {
       issues.push({
         level: 'warn',
         tag: 'Екстремальний внесок в урон команди',
-        desc: `Гравець самотужки наніс ${Math.round(dmgShare * 100)}% усього урону команди за матч. Така надмірна концентрація свідчить про значну невідповідність рівня гри поточному лобі.`
+        desc: `Гравець самотужки наніс ${Math.round(dmgShare * 100)}% усього урону команди за матч. Така надмірна концентрація свідчить про значну невідповідність рівня гри поточному лобі.` + HEURISTIC_NOTE
       });
     }
 
@@ -2691,7 +2705,7 @@ function secFairPlayAudit(m, rad, dire) {
       issues.push({
         level: 'warn',
         tag: 'Критична кількість смертей',
-        desc: `${deaths} смертей за ${Math.round(mins)} хв — значна втрата золота та досвіду для команди.`
+        desc: `${deaths} смертей за ${Math.round(mins)} хв — значна втрата золота та досвіду для команди.` + HEURISTIC_NOTE
       });
     }
 
@@ -2700,7 +2714,7 @@ function secFairPlayAudit(m, rad, dire) {
       issues.push({
         level: 'warn',
         tag: 'Критично низький нетворс на пізній стадії',
-        desc: `Нетворс героя склав лише ${nf(nw)} на ${Math.round(mins)}-й хвилині. Характерно для продажу предметів перед падінням трону або тотального зриву фарму.`
+        desc: `Нетворс героя склав лише ${nf(nw)} на ${Math.round(mins)}-й хвилині. Характерно для продажу предметів перед падінням трону або тотального зриву фарму.` + HEURISTIC_NOTE
       });
     }
 
@@ -2709,7 +2723,7 @@ function secFairPlayAudit(m, rad, dire) {
       issues.push({
         level: 'warn',
         tag: 'Пасивність / AFK (Низький APM)',
-        desc: `Показник темпу дій становить лише ${apm} дій/хв (норма для активного гравця — 140–300 APM). Можливий простій у лісі або на фонтані.`
+        desc: `Показник темпу дій становить лише ${apm} дій/хв (норма для активного гравця — 140–300 APM). Можливий простій у лісі або на фонтані.` + HEURISTIC_NOTE
       });
     }
 
@@ -2718,7 +2732,7 @@ function secFairPlayAudit(m, rad, dire) {
       issues.push({
         level: 'warn',
         tag: `Екстремальний темп дій (APM ${apm})`,
-        desc: `Аномально високий темп (${apm} дій/хв, понад ${(apm/60).toFixed(1)} дій щосекунди безперервно). Зустрічається у гравців високого рангу або при використанні макросів чи автоклікерів. Перевірте реплей.`
+        desc: `Аномально високий темп (${apm} дій/хв, понад ${(apm/60).toFixed(1)} дій щосекунди безперервно). Зустрічається у гравців високого рангу або при використанні макросів чи автоклікерів. Перевірте реплей.` + HEURISTIC_NOTE
       });
     }
 
@@ -3717,6 +3731,27 @@ async function init() {
     applyTheme(cur === 'dark' ? 'light' : 'dark');
   });
 
+  const keyInput = $('#apiKeyInput');
+  const keyModal = $('#apiKeyModal');
+  if (keyInput) keyInput.value = localStorage.getItem('opendota_api_key') || '';
+  $('#apiKeyBtn')?.addEventListener('click', () => {
+    keyModal.style.display = keyModal.style.display === 'none' ? 'block' : 'none';
+  });
+  $('#saveApiKeyBtn')?.addEventListener('click', () => {
+    const k = (keyInput.value || '').trim();
+    if (k) localStorage.setItem('opendota_api_key', k);
+    else localStorage.removeItem('opendota_api_key');
+    keyModal.style.display = 'none';
+    setStatus('API-ключ збережено!');
+    setTimeout(clearStatus, 2000);
+  });
+  $('#clearApiKeyBtn')?.addEventListener('click', () => {
+    if (keyInput) keyInput.value = '';
+    localStorage.removeItem('opendota_api_key');
+    setStatus('API-ключ видалено.');
+    setTimeout(clearStatus, 2000);
+  });
+
   window.run = run;
   $('#searchForm').addEventListener('submit', e => {
     e.preventDefault();
@@ -3748,3 +3783,24 @@ with open(out_path, 'w', encoding='utf-8') as f:
     f.write(html_content)
 
 print("Updated index.html successfully! Size:", len(html_content))
+
+# Auto-check JS syntax via node --check
+m = re.search(r"<script>(.*)</script>", html_content, re.S)
+if m:
+    node_cmd = shutil.which("node") or (
+        r"D:\programs\cursor\resources\app\resources\helpers\node.exe"
+        if os.path.exists(r"D:\programs\cursor\resources\app\resources\helpers\node.exe")
+        else "node"
+    )
+    with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as t:
+        t.write(m.group(1))
+        t_name = t.name
+    try:
+        r = subprocess.run([node_cmd, "--check", t_name], capture_output=True, text=True)
+        if r.returncode != 0:
+            print("JS SYNTAX ERROR:\n", r.stderr)
+            sys.exit(1)
+        print("JS syntax OK")
+    finally:
+        if os.path.exists(t_name):
+            os.remove(t_name)
