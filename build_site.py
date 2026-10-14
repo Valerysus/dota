@@ -1157,6 +1157,70 @@ function formatAccountAudit(wlData) {
   };
 }
 
+function classifyDeath(deathTime, playerSlot, allPlayers) {
+  const isRad = playerSlot < 128;
+  const allies = (allPlayers || []).filter(p => (p.player_slot < 128) === isRad);
+
+  let allyDeaths = 0;
+  for (const a of allies) {
+    if (a.player_slot === playerSlot) continue;
+    if (Array.isArray(a.deaths_log)) {
+      for (const d of a.deaths_log) {
+        if (Math.abs(d.time - deathTime) <= 20) allyDeaths++;
+      }
+    }
+  }
+
+  let teamKills = 0;
+  for (const a of allies) {
+    if (Array.isArray(a.kills_log)) {
+      for (const k of a.kills_log) {
+        if (Math.abs(k.time - deathTime) <= 20) teamKills++;
+      }
+    }
+  }
+
+  return (allyDeaths === 0 && teamKills === 0)
+    ? 'Одиночна смерть поза позицією команди'
+    : 'Командна сутичка';
+}
+
+function getMapConsequence(deathTime, playerSlot, objectives) {
+  if (!Array.isArray(objectives) || !objectives.length) return null;
+  const isRad = playerSlot < 128;
+  const myBuildingPrefix = isRad ? 'goodguys' : 'badguys';
+  const enemyRoshanTeam = isRad ? 3 : 2;
+
+  const windowEvents = [];
+  for (const o of objectives) {
+    if (o.time == null) continue;
+    const dt = o.time - deathTime;
+    if (dt >= 0 && dt <= 60) {
+      if (o.type === 'building_kill' && o.key && o.key.includes(myBuildingPrefix)) {
+        let bName = 'споруди';
+        if (o.key.includes('tower')) bName = 'вежі';
+        else if (o.key.includes('rax')) bName = 'барака';
+        else if (o.key.includes('fort')) bName = 'трону';
+        windowEvents.push({
+          time: o.time,
+          dt,
+          text: `Наслідок на карті: втрата ${bName} через ${dt} с після смерті`
+        });
+      } else if (o.type === 'CHAT_MESSAGE_ROSHAN_KILL' && o.team === enemyRoshanTeam) {
+        windowEvents.push({
+          time: o.time,
+          dt,
+          text: `Наслідок на карті: вбивство Рошана ворогом через ${dt} с після смерті`
+        });
+      }
+    }
+  }
+
+  if (!windowEvents.length) return null;
+  windowEvents.sort((a, b) => a.time - b.time);
+  return windowEvents[0].text;
+}
+
 const PERMS_5 = (() => {
   const out = [];
   const rec = (arr, rest) => {
@@ -1315,9 +1379,10 @@ function renderAnalysis() {
     killer: e,
     killerHero: hero(e.hero_id)
   }))).sort((a, b) => a.time - b.time) : [];
+  const soloDeaths = detailedDeaths.filter(dt => classifyDeath(dt.time, p.player_slot, m.players) === 'Одиночна смерть поза позицією команди').length;
   const tasks = [];
   const addTask = (w, text) => tasks.push({ w, text });
-  const ctx = { m, p, dur, mins, win, team, enemies, rad, dire, parsed, turbo, bm, role, H, mine, deathTimes, detailedDeaths, addTask };
+  const ctx = { m, p, dur, mins, win, team, enemies, rad, dire, parsed, turbo, bm, role, H, mine, deathTimes, detailedDeaths, soloDeaths, addTask };
 
   // ---------- Верхній банер матчу ----------
   const rk = m.radiant_score ?? 0, dk = m.dire_score ?? 0;
@@ -3545,6 +3610,13 @@ function buildTacticalDeathAudit(ctx) {
       const reasons = [];
       let advice = '';
 
+      const dType = classifyDeath(t, p.player_slot, ctx.m.players);
+      reasons.push(`<b>${dType}</b>.`);
+      const mapCons = getMapConsequence(t, p.player_slot, ctx.m.objectives);
+      if (mapCons) {
+        reasons.push(`<b>${mapCons}</b>.`);
+      }
+
       if (killerShort.includes('night_stalker')) {
         if (isNight) {
           reasons.push(`<b>Нічна фаза карти:</b> Night Stalker під дією Dark Ascension має максимальний огляд, прискорення та безмовність (Crippling Fear). Помилка — вихід на самоті у ліс або за річку вночі.`);
@@ -3633,7 +3705,7 @@ function buildTacticalDeathAudit(ctx) {
     <div class="death-audit-box">
       <div class="death-audit-title">
         <span class="pill crit">Тактичний аудит смертей</span>
-        <span>Чому саме ти віддавав життя (${d} смертей за матч)</span>
+        <span>Чому саме ти віддавав життя (${d} смертей за матч · одиночних: <b>${ctx.soloDeaths ?? 0}</b>)</span>
       </div>
       <p class="sub" style="margin:2px 0 10px">Аналіз ворожих кілерів, отриманого урону та помилок таймінгу за телеметрією реплею.</p>
       ${killersHtml}
