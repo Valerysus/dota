@@ -23,6 +23,13 @@ html_content = r'''<!DOCTYPE html>
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Dota 2 AI Coach — аналітичний розбір матчів (OpenDota Live)</title>
+<meta name="description" content="Розбір матчів Dota 2 на основі OpenDota API">
+<meta name="theme-color" content="#1c1f26">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Dota 2 AI Coach — розбір матчів">
+<meta property="og:description" content="Розбір матчів Dota 2 на основі OpenDota API: драфт, матчапи, лейнінг, предмети, макро та план на наступну гру.">
+<meta property="og:url" content="https://valerysus.github.io/dota/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c1f26'/%3E%3Ctext x='32' y='42' font-family='Arial,sans-serif' font-weight='800' font-size='28' text-anchor='middle' fill='%23d08770'%3ED2%3C/text%3E%3C/svg%3E">
 <style>
 :root{
   --bg:#1c1f26; --card:#252932; --card2:#2b3039; --border:#363c48; --text:#e5e9f0; --muted:#9aa5b4;
@@ -83,7 +90,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .player{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
 .player img.avatar{width:68px;height:68px;border-radius:12px;border:1px solid var(--border)}
 .player .name{font-size:20px;font-weight:700;margin:0}
-.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:550;border:1px solid var(--border);color:var(--muted);margin-right:6px;white-space:nowrap}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:550;border:1px solid var(--border);color:var(--muted);margin-right:6px;white-space:nowrap}
 .pill.good{color:var(--good);border-color:var(--good);background:var(--good-bg)}
 .pill.crit{color:var(--crit);border-color:var(--crit);background:var(--crit-bg)}
 .pill.warn{color:var(--warn);border-color:var(--warn);background:var(--warn-bg)}
@@ -99,7 +106,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .mcard img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;display:block;margin-bottom:6px;background:var(--border)}
 .mcard .res{font-weight:700;font-size:13px}
 .res.win{color:var(--good)} .res.loss{color:var(--crit)}
-.mcard .meta{color:var(--muted);font-size:12px}
+.mcard .meta{color:var(--muted);font-size:13px}
 
 /* Top Match Banner */
 .match-top-banner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:18px;margin-bottom:14px}
@@ -116,7 +123,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 /* Hero switcher inside banner */
 .hero-mini-strip{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
 .hero-mini-team{display:flex;align-items:center;gap:6px}
-.hero-mini-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.hero-mini-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
 .hero-mini-label.rad{color:var(--good)}
 .hero-mini-label.dire{color:var(--crit)}
 .hero-mini-btn{position:relative;width:44px;height:28px;padding:0;border:2px solid transparent;border-radius:7px;overflow:hidden;background:var(--card2);cursor:pointer;transition:all .15s}
@@ -146,7 +153,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 /* Stat Tiles */
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:12px 0 4px}
 .tile{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
-.tile .k{color:var(--muted);font-size:12px;font-weight:550}
+.tile .k{color:var(--muted);font-size:13px;font-weight:550}
 .tile .v{font-size:19px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
 .tile .v.good{color:var(--good)} .tile .v.warn{color:var(--warn)} .tile .v.crit{color:var(--crit)}
 
@@ -156,7 +163,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .bm .raw{font-weight:650;text-align:right;font-variant-numeric:tabular-nums;font-size:14px}
 .bar{height:10px;border-radius:6px;background:var(--card2);border:1px solid var(--border);overflow:hidden}
 .bar>div{height:100%;border-radius:6px}
-.bm .txt{grid-column:2/-1;font-size:12px;color:var(--muted);margin-top:-4px;margin-bottom:6px}
+.bm .txt{grid-column:2/-1;font-size:13px;color:var(--muted);margin-top:-4px;margin-bottom:6px}
 
 /* Coach Issues & Alerts */
 .issue{border-radius:12px;padding:14px 16px;margin:12px 0;border-left:4px solid var(--accent);background:var(--info-bg)}
@@ -164,7 +171,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .issue.warn{border-color:var(--warn);background:var(--warn-bg)}
 .issue.good{border-color:var(--good);background:var(--good-bg)}
 .issue .it{font-weight:650;font-size:15px;margin-bottom:6px;display:flex;gap:8px;align-items:baseline}
-.issue .tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.issue .tag{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .issue.crit .tag{color:var(--crit)} .issue.warn .tag{color:var(--warn)} .issue.good .tag{color:var(--good)} .issue.info .tag{color:var(--accent)}
 .issue p{margin:6px 0;font-size:14px;line-height:1.55}
 
@@ -196,7 +203,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .draft-row{display:grid;grid-template-columns:130px 1fr 130px;align-items:center;gap:10px;font-size:13px}
 .draft-row .l-val{text-align:right;font-weight:650;color:var(--good)}
 .draft-row .r-val{text-align:left;font-weight:650;color:var(--crit)}
-.draft-row .name{text-align:center;color:var(--muted);font-size:12px}
+.draft-row .name{text-align:center;color:var(--muted);font-size:13px}
 .draft-meter{height:8px;border-radius:4px;background:var(--card2);border:1px solid var(--border);display:flex;overflow:hidden}
 .draft-meter .m-rad{background:var(--good)}
 .draft-meter .m-dire{background:var(--crit);margin-left:auto}
@@ -205,7 +212,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .pb-badge{position:relative;flex:0 0 46px;text-align:center}
 .pb-badge img{width:46px;height:26px;border-radius:4px;display:block;object-fit:cover;border:1px solid var(--border)}
 .pb-badge.ban img{filter:grayscale(1);opacity:.55}
-.pb-badge .pb-num{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);font-size:10px;padding:0 4px;border-radius:4px;background:var(--card);border:1px solid var(--border);color:var(--muted);font-weight:700}
+.pb-badge .pb-num{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);font-size:12px;padding:0 4px;border-radius:4px;background:var(--card);border:1px solid var(--border);color:var(--muted);font-weight:700}
 .pb-badge.rad{border-bottom:2px solid var(--good)}
 .pb-badge.dire{border-bottom:2px solid var(--crit)}
 
@@ -218,7 +225,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .draft-math-row img{width:40px;height:24px;border-radius:4px;object-fit:cover;border:1px solid var(--border);flex:none;margin-top:2px}
 .draft-math-info{flex:1;min-width:0}
 .draft-math-head{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:650}
-.draft-math-why{font-size:11px;color:var(--muted);line-height:1.35;margin-top:3px}
+.draft-math-why{font-size:12px;color:var(--muted);line-height:1.35;margin-top:3px}
 .draft-score-badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:6px;font-size:12px;font-weight:750;font-variant-numeric:tabular-nums}
 .draft-score-badge.pos{background:var(--good-bg);border:1px solid var(--good);color:var(--good)}
 .draft-score-badge.neg{background:var(--crit-bg);border:1px solid var(--crit);color:var(--crit)}
@@ -232,14 +239,14 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .graph-svg{width:100%;height:220px;display:block;overflow:visible;cursor:crosshair}
 .graph-tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);box-shadow:0 6px 16px rgba(0,0,0,.35);transform:translate(-50%,-125%);white-space:nowrap;display:none;z-index:20}
 .graph-tip.show{display:block}
-.graph-legend{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-top:10px;flex-wrap:wrap}
+.graph-legend{display:flex;gap:16px;font-size:13px;color:var(--muted);margin-top:10px;flex-wrap:wrap}
 .graph-legend span{display:inline-flex;align-items:center;gap:6px}
 .graph-legend .dot{width:9px;height:9px;border-radius:50%}
 
 /* Interactive Player Legend Grid */
 .player-legend-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
 .player-legend-team{display:flex;flex-direction:column;gap:6px}
-.player-legend-team-title{font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:.05em}
+.player-legend-team-title{font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:.05em}
 .player-legend-team-title.rad{color:var(--good)}
 .player-legend-team-title.dire{color:var(--crit)}
 .player-legend-list{display:flex;flex-wrap:wrap;gap:6px}
@@ -253,7 +260,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .player-legend-btn .nw{font-weight:650;font-variant-numeric:tabular-nums;color:var(--muted)}
 
 /* Curve labels in SVG */
-.curve-label{font-size:9.5px;font-weight:600;letter-spacing:-.01em;pointer-events:none}
+.curve-label{font-size:12px;font-weight:600;letter-spacing:-.01em;pointer-events:none}
 
 /* Stratz-style Impact Rating & Outcome styles */
 .outcome-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
@@ -282,8 +289,8 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .imp-tag.svp{background:rgba(136,169,195,.18);border:1px solid var(--accent);color:var(--accent)}
 .imp-tag.pos{background:var(--good-bg);border:1px solid var(--good);color:var(--good)}
 .imp-tag.neg{background:var(--crit-bg);border:1px solid var(--crit);color:var(--crit)}
-.imp-card-stats{display:flex;gap:8px;color:var(--muted);font-size:12px;margin-top:3px;flex-wrap:wrap}
-.imp-card-desc{font-size:11px;color:var(--text);margin-top:4px;line-height:1.35;opacity:.85}
+.imp-card-stats{display:flex;gap:8px;color:var(--muted);font-size:13px;margin-top:3px;flex-wrap:wrap}
+.imp-card-desc{font-size:12px;color:var(--text);margin-top:4px;line-height:1.35;opacity:.85}
 
 /* Fair Play, Ruiners & Cheaters Audit */
 .fair-play-status{display:flex;align-items:flex-start;gap:14px;padding:14px 18px;border-radius:12px;margin-bottom:14px}
@@ -298,7 +305,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .fp-player-info img{width:46px;height:26px;border-radius:4px;object-fit:cover;border:1px solid var(--border)}
 .fp-player-info .name{font-weight:700;font-size:14px}
 .fp-badge-row{display:flex;gap:6px;flex-wrap:wrap}
-.fp-badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px}
+.fp-badge{font-size:12px;font-weight:700;padding:3px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px}
 .fp-badge.crit{background:rgba(208,135,112,.2);color:var(--crit);border:1px solid rgba(208,135,112,.4)}
 .fp-badge.warn{background:rgba(235,203,139,.18);color:var(--warn);border:1px solid rgba(235,203,139,.35)}
 .fp-badge.info{background:rgba(136,169,195,.18);color:var(--accent);border:1px solid rgba(136,169,195,.35)}
@@ -308,12 +315,12 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .fp-issues-list li.warn::before{color:var(--warn)}
 .fp-issues-list li.info::before{color:var(--accent)}
 .fp-actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.fp-btn{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:6px;background:var(--card);border:1px solid var(--border);color:var(--text);cursor:pointer;text-decoration:none;transition:all .15s}
+.fp-btn{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:var(--card);border:1px solid var(--border);color:var(--text);cursor:pointer;text-decoration:none;transition:all .15s}
 .fp-btn:hover{background:var(--border);color:var(--text);text-decoration:none}
 .fp-btn.steam{background:rgba(136,169,195,.18);border-color:var(--accent);color:var(--accent)}
 .fp-btn.steam:hover{background:var(--accent);color:#fff}
 .fp-dossier-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;margin-top:8px}
-.fp-alias-tag{display:inline-block;padding:2px 6px;border-radius:4px;background:var(--card2);border:1px solid var(--border);margin:2px 4px 2px 0;font-size:11px}
+.fp-alias-tag{display:inline-block;padding:2px 6px;border-radius:4px;background:var(--card2);border:1px solid var(--border);margin:2px 4px 2px 0;font-size:12px}
 
 /* Settings Mockup */
 .mock{max-width:460px;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin:16px 0;background:var(--card2);font-size:13px}
@@ -365,7 +372,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
   box-shadow:0 16px 40px rgba(0,0,0,0.15);
 }
 .dock-team{display:flex;align-items:center;gap:6px}
-.dock-side-badge{font-size:11px;font-weight:800;letter-spacing:.05em;padding:3px 6px;border-radius:6px;flex:none}
+.dock-side-badge{font-size:12px;font-weight:800;letter-spacing:.05em;padding:3px 6px;border-radius:6px;flex:none}
 .dock-side-badge.rad{color:var(--good);background:var(--good-bg)}
 .dock-side-badge.dire{color:var(--crit);background:var(--crit-bg)}
 .dock-hero-btn{
@@ -376,14 +383,14 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .dock-hero-btn:hover{transform:translateY(-2px);border-color:var(--muted)}
 .dock-hero-btn.on{border-color:var(--accent);box-shadow:0 0 12px rgba(136,169,195,.6);transform:translateY(-2px) scale(1.08)}
 .dock-hero-lvl{
-  position:absolute;bottom:1px;right:2px;font-size:9px;font-weight:700;
+  position:absolute;bottom:1px;right:2px;font-size:12px;font-weight:700;
   background:rgba(0,0,0,.7);color:#fff;padding:0 3px;border-radius:3px;line-height:1.2;
 }
 .dock-mid{display:flex;flex-direction:column;align-items:center;padding:0 8px;border-left:1px solid var(--border);border-right:1px solid var(--border);flex:none}
 .dock-score{font-size:14px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
 .dock-score .rad-s{color:var(--good)}
 .dock-score .dire-s{color:var(--crit)}
-.dock-dur{font-size:11px;color:var(--muted)}
+.dock-dur{font-size:12px;color:var(--muted)}
 .dock-sel-info{display:flex;align-items:center;gap:8px;padding-left:4px;border-left:1px solid var(--border)}
 .dock-cur-name{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap}
 .dock-jump-btn{padding:3px 8px;font-size:12px;white-space:nowrap}
@@ -405,7 +412,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 
 /* Benchmarks Modern Grid & Table */
 .bm-table{display:flex;flex-direction:column;gap:8px;margin-top:14px}
-.bm-head-row{display:grid;grid-template-columns:135px 85px 95px 125px 1fr;gap:12px;align-items:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding-bottom:8px;border-bottom:1px solid var(--border)}
+.bm-head-row{display:grid;grid-template-columns:135px 85px 95px 125px 1fr;gap:12px;align-items:center;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding-bottom:8px;border-bottom:1px solid var(--border)}
 .bm-item-row{display:grid;grid-template-columns:135px 85px 95px 125px 1fr;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
 .bm-item-row:last-child{border-bottom:none}
 .bm-col-lab{font-size:14px;font-weight:600}
@@ -426,7 +433,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .death-killer-card{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 12px}
 .death-killer-card img{width:46px;height:28px;border-radius:5px;object-fit:cover;border:1px solid var(--border);flex:none}
 .death-killer-name{font-size:13px;font-weight:700}
-.death-killer-stat{font-size:11px;color:var(--crit);font-weight:600}
+.death-killer-stat{font-size:12px;color:var(--crit);font-weight:600}
 .death-timeline{display:flex;flex-direction:column;gap:10px;margin-top:12px}
 .death-item{display:flex;gap:12px;align-items:flex-start;background:var(--card2);border:1px solid var(--border);border-left:4px solid var(--crit);border-radius:10px;padding:10px 14px;font-size:13px;line-height:1.55}
 .death-time-badge{font-size:12px;font-weight:800;padding:3px 8px;border-radius:6px;background:var(--crit-bg);color:var(--crit);font-variant-numeric:tabular-nums;white-space:nowrap;margin-top:2px}
@@ -434,7 +441,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .death-item-head{display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:3px}
 .death-item-head img{width:32px;height:20px;border-radius:4px;object-fit:cover}
 .death-item-reason{color:var(--text);margin-top:2px}
-.death-item-tip{color:var(--accent);font-size:12px;margin-top:5px;padding-top:4px;border-top:1px dashed rgba(255,255,255,.08)}
+.death-item-tip{color:var(--accent);font-size:13px;margin-top:5px;padding-top:4px;border-top:1px dashed rgba(255,255,255,.08)}
 
 
 /* Stratz-style Draft Grid - Full Widescreen */
@@ -455,32 +462,33 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .stratz-hero-card.weak{border-color:rgba(208,135,112,.6)}
 .stratz-hero-img-wrap{position:relative;width:100%;aspect-ratio:16/9;border-radius:6px;overflow:hidden;margin-bottom:6px;border:1px solid rgba(255,255,255,.08);box-shadow:0 2px 6px rgba(0,0,0,.3)}
 .stratz-hero-img-wrap img{width:100%;height:100%;object-fit:cover;display:block}
-.stratz-role-badge{font-size:10.5px;font-weight:750;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,.5);color:var(--text);margin-bottom:4px;white-space:nowrap;border:1px solid rgba(255,255,255,.06)}
+.stratz-role-badge{font-size:12px;font-weight:750;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,.5);color:var(--text);margin-bottom:4px;white-space:nowrap;border:1px solid rgba(255,255,255,.06)}
 .stratz-hero-name{font-size:12px;font-weight:750;line-height:1.2;margin-bottom:3px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .stratz-hero-score{font-size:13px;font-weight:800;margin-bottom:8px;font-variant-numeric:tabular-nums}
 .stratz-hero-score.pos{color:var(--good)}
 .stratz-hero-score.neg{color:var(--crit)}
 .stratz-vs-matrix{width:100%;display:flex;flex-direction:column;gap:3px;background:rgba(0,0,0,.25);border-radius:6px;padding:5px 4px;margin-bottom:8px}
-.stratz-vs-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;padding:2px 3px;border-radius:4px;transition:background .1s}
+.stratz-vs-row{display:flex;align-items:center;justify-content:space-between;font-size:12px;padding:2px 3px;border-radius:4px;transition:background .1s}
 .stratz-vs-row:hover{background:rgba(255,255,255,.06)}
 .stratz-vs-left{display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden}
 .stratz-vs-left img{width:22px;height:13px;border-radius:2px;object-fit:cover;flex:none}
-.stratz-vs-hname{font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70px}
-.stratz-vs-val{font-weight:750;font-size:10.5px;font-variant-numeric:tabular-nums;flex:none}
+.stratz-vs-hname{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70px}
+.stratz-vs-val{font-weight:750;font-size:12px;font-variant-numeric:tabular-nums;flex:none}
 .stratz-vs-val.pos{color:var(--good)}
 .stratz-vs-val.neg{color:var(--crit)}
 .stratz-vs-val.zero{color:var(--muted)}
-.stratz-advice-mini{font-size:10.5px;line-height:1.35;padding:6px;border-radius:6px;width:100%;text-align:center;margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:4px;min-height:56px;justify-content:center}
+.stratz-advice-mini{font-size:12px;line-height:1.35;padding:6px;border-radius:6px;width:100%;text-align:center;margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:4px;min-height:56px;justify-content:center}
 .stratz-advice-mini.pos{background:var(--good-bg);border:1px solid var(--good)}
 .stratz-advice-mini.neg{background:var(--crit-bg);border:1px solid rgba(208,135,112,.5)}
 .stratz-advice-mini.neu{background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border)}
-.stratz-sub-badge{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:1px 5px;border-radius:3px;color:var(--crit);background:rgba(208,135,112,.2)}
+.stratz-sub-badge{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:1px 5px;border-radius:3px;color:var(--crit);background:rgba(208,135,112,.2)}
 .stratz-sub-badge.good{color:var(--good);background:rgba(143,188,143,.2)}
 .stratz-sub-badge.neutral{color:var(--muted);background:rgba(255,255,255,.08)}
 .stratz-sub-chips{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-items:center}
-.stratz-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:4px;background:rgba(208,135,112,.25);border:1px solid rgba(208,135,112,.4);font-size:10.5px;font-weight:700;color:var(--text);cursor:help;white-space:nowrap}
-.stratz-chip-img{width:15px;height:10px;border-radius:2px;object-fit:cover}
-.stratz-sub-text{font-size:10.5px;color:var(--muted);line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.stratz-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:4px;background:rgba(208,135,112,.25);border:1px solid rgba(208,135,112,.4);font-size:12px;font-weight:700;color:var(--text);cursor:help;white-space:nowrap}
+.stratz-chip-img{width:18px;height:11px;border-radius:2px;object-fit:cover}
+.stratz-chip-delta{color:var(--good);font-weight:800;margin-left:2px}
+.stratz-sub-text{font-size:12px;color:var(--muted);line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
 
 /* Draft Math Clean Cards */
 .draft-math-row{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;transition:border-color .15s}
@@ -497,6 +505,45 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .draft-advice.pos{background:var(--good-bg);border-color:var(--good);color:var(--text)}
 .draft-advice.neg{background:var(--crit-bg);border-color:var(--crit);color:var(--text)}
 
+/* ===== Доступність ===== */
+button:focus-visible, a:focus-visible, input:focus-visible, [tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+.scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+/* ===== Мобільна верстка (<= 600px) ===== */
+@media (max-width:600px){
+  .wrap{width:100%;padding:12px 10px 110px}
+  header{flex-wrap:wrap}
+  .logo h1{font-size:18px}
+  .card{padding:14px;border-radius:12px}
+  .card h2{font-size:17px;flex-wrap:wrap;gap:6px}
+  .search{flex-direction:column}
+  .search .btn{width:100%;justify-content:center}
+  .match-top-banner{flex-direction:column;align-items:flex-start}
+  .hero-mini-strip{gap:8px}
+  .hero-mini-team{flex-wrap:wrap}
+  .hero-mini-btn{width:38px;height:24px}
+  .hero-dock{left:0;right:0;bottom:0;transform:none;max-width:100vw;width:100%;border-radius:12px 12px 0 0;gap:6px;padding:6px 8px;overflow-x:auto;justify-content:flex-start}
+  .hero-dock.collapsed{transform:translateY(calc(100% - 26px))}
+  .hero-dock.collapsed:hover{transform:none}
+  .dock-hero-btn{width:32px;height:21px}
+  .dock-mid{padding:0 4px}
+  .dock-sel-info{display:none}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bm-table{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .bm-head-row,.bm-item-row{min-width:560px}
+  .draft-row{grid-template-columns:40px 1fr 40px}
+  .stratz-team-col{padding:10px}
+  .stratz-heroes-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .graph-tabs{flex-wrap:nowrap;overflow-x:auto;width:100%}
+  .graph-tab{white-space:nowrap}
+  .graph-svg{height:180px}
+  .graph-cont{padding:8px}
+  .timeline{display:block;overflow-x:auto;white-space:nowrap}
+  .outcome-grid,.imp-grid,.two,.player-legend-grid,.dash-grid{grid-template-columns:1fr}
+  .death-item{flex-direction:column}
+  .active-hero-head img.hero-portrait{width:96px}
+}
 </style>
 </head>
 <body>
@@ -528,9 +575,10 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 
   <section class="card">
     <form class="search" id="searchForm" autocomplete="off" onsubmit="if(window.run) window.run(document.getElementById('q').value); return false;">
-      <input id="q" value="9044569588" placeholder="Account ID (Steam32), SteamID64 або Match ID" aria-label="ID гравця або матчу">
-      <button class="btn btn-primary" id="searchSubmitBtn" type="submit" onclick="if(window.run) window.run(document.getElementById('q').value);">Проаналізувати</button>
+      <input id="q" placeholder="Account ID (Steam32), SteamID64 або Match ID" aria-label="ID гравця або матчу" autofocus>
+      <button class="btn btn-primary" id="searchSubmitBtn" type="submit">Проаналізувати</button>
     </form>
+    <div style="margin-top:10px"><button type="button" class="btn btn-sm" id="demoBtn" data-quick="9044569588">Спробувати демо-матч</button></div>
     <div class="hint-line">Розпізнається автоматично: Steam32 (напр. 94054712), SteamID64 (7656119…), номер матчу (10 цифр) або посилання з OpenDota/Dotabuff/Steam.</div>
     <div class="quick-presets" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:13px">
       <span class="muted">Швидкі розбори:</span>
@@ -872,7 +920,7 @@ function renderStrip(matches) {
           <div class="res ${win ? 'win' : 'loss'}">${win ? 'Перемога' : 'Поразка'}</div>
           <div class="meta">${esc(hero(m.hero_id).dname)}</div>
           <div class="meta">${m.kills}/${m.deaths}/${m.assists} · ${fmtT(m.duration)}</div>
-          <div class="meta" style="font-size:11px">${timeAgo(m.start_time)}</div>
+          <div class="meta" style="font-size:12px">${timeAgo(m.start_time)}</div>
         </button>`;
       }).join('')}
     </div>
@@ -930,6 +978,9 @@ async function loadMatch(matchId, accountId) {
 
   if (target) await getHeroBenchmarks(target.hero_id);
 
+  setStatus('Завантаження статистики матчапів героїв (OpenDota)…');
+  try { await loadHeroMatchups(m.players.map(x => x.hero_id)); } catch {}
+
   renderAnalysis();
 }
 
@@ -964,19 +1015,92 @@ function getWardsData(p) {
   return { obs, sen, total: obs + sen };
 }
 
+const POS_NAMES = { 1:'Pos 1 · Carry', 2:'Pos 2 · Mid', 3:'Pos 3 · Offlane', 4:'Pos 4 · Soft Support', 5:'Pos 5 · Hard Support' };
+
+// Широкі пули героїв за позиціями. Це лише «допуск» героя до позиції;
+// конкретні рекомендації ранжуються за реальними матчапами проти ворожого складу.
+const POSITION_POOLS_RAW = {
+  1: ['Anti-Mage','Juggernaut','Phantom Assassin','Phantom Lancer','Faceless Void','Spectre','Medusa','Terrorblade','Luna','Morphling','Slark','Lifestealer','Wraith King','Sven','Gyrocopter','Drow Ranger','Ursa','Chaos Knight','Troll Warlord','Naga Siren','Weaver','Monkey King','Muerta','Razor','Alchemist','Riki','Bloodseeker','Templar Assassin','Lycan','Arc Warden','Kez','Clinkz','Nature\u2019s Prophet',"Nature's Prophet",'Shadow Fiend','Ember Spirit'],
+  2: ['Shadow Fiend','Queen of Pain','Storm Spirit','Ember Spirit','Puck','Invoker','Templar Assassin','Lina','Leshrac','Outworld Destroyer','Death Prophet','Tinker','Zeus','Kunkka','Pangolier','Void Spirit','Huskar','Viper','Sniper','Dragon Knight','Arc Warden','Meepo','Necrophos','Batrider','Primal Beast','Lone Druid','Windranger','Monkey King','Broodmother','Timbersaw','Razor','Earth Spirit','Visage','Pugna','Magnus','Alchemist','Clinkz'],
+  3: ['Axe','Centaur Warrunner','Tidehunter','Mars','Underlord','Slardar','Legion Commander','Bristleback','Dark Seer','Beastmaster','Sand King','Doom','Night Stalker','Timbersaw','Brewmaster','Primal Beast','Magnus','Enigma','Visage','Razor','Viper','Necrophos','Batrider','Dawnbreaker','Death Prophet','Pangolier','Omniknight','Abaddon','Venomancer','Windranger','Lycan','Kunkka','Dragon Knight','Earthshaker','Spirit Breaker','Broodmother','Huskar'],
+  4: ['Earthshaker','Tusk','Spirit Breaker','Rubick','Clockwerk','Earth Spirit','Mirana','Nyx Assassin','Skywrath Mage','Hoodwink','Snapfire','Bounty Hunter','Phoenix','Pugna','Shadow Shaman','Weaver','Marci','Dark Willow','Grimstroke','Windranger','Tiny','Pangolier','Lion','Techies','Magnus','Ancient Apparition','Jakiro','Bane','Sand King','Batrider','Dawnbreaker','Venomancer','Zeus','Keeper of the Light','Ringmaster','Muerta'],
+  5: ['Crystal Maiden','Lion','Lich','Dazzle','Witch Doctor','Shadow Demon','Disruptor','Winter Wyvern','Warlock','Oracle','Treant Protector','Jakiro','Ancient Apparition','Vengeful Spirit','Undying','Ogre Magi','Io','Chen','Enchantress','Silencer','Bane','Elder Titan','Keeper of the Light','Omniknight','Abaddon','Grimstroke','Dark Willow','Shadow Shaman','Snapfire','Pugna','Venomancer','Earthshaker','Marci','Phoenix','Rubick','Ringmaster']
+};
+let _posPoolCache = null;
+function positionPools() {
+  const n = Object.keys(state.heroes).length;
+  if (_posPoolCache && _posPoolCache.n === n) return _posPoolCache.pools;
+  const byName = {};
+  Object.values(state.heroes).forEach(h => { if (h.dname) byName[h.dname.toLowerCase()] = h.id; });
+  const pools = {};
+  Object.entries(POSITION_POOLS_RAW).forEach(([pos, names]) => {
+    pools[pos] = [...new Set(names.map(x => byName[x.toLowerCase()]).filter(Boolean))];
+  });
+  _posPoolCache = { n, pools };
+  return pools;
+}
+
+const PERMS_5 = (() => {
+  const out = [];
+  const rec = (arr, rest) => {
+    if (!rest.length) { out.push(arr); return; }
+    rest.forEach((v, i) => rec([...arr, v], [...rest.slice(0, i), ...rest.slice(i + 1)]));
+  };
+  rec([], [1, 2, 3, 4, 5]);
+  return out;
+})();
+const _teamPosCache = new Map();
+
+// Унікальний розподіл позицій 1–5 у команді: перебір усіх 120 варіантів
+// і вибір того, що найкраще пояснює лінію (lane_role), фарм, варди та профіль героя.
+function assignTeamPositions(team, mins) {
+  const key = (state.match?.match_id || '') + ':' + team.map(x => x.player_slot + '-' + x.hero_id).join(',');
+  if (_teamPosCache.has(key)) return _teamPosCache.get(key);
+  const pools = positionPools();
+  const farm = x => (x.gold_per_min || 0) + ((x.last_hits || 0) / mins) * 30;
+  const order = [...team].sort((a, b) => farm(b) - farm(a));
+  const fit = (x, pos) => {
+    let s = 0;
+    const rank = order.indexOf(x);
+    s -= Math.abs(rank - (pos - 1)) * 2.2;
+    const lr = x.lane_role;
+    if (lr === 2) s += pos === 2 ? 7 : -2;
+    else if (lr === 1) s += (pos === 1 || pos === 5) ? 4 : (pos === 2 ? -3 : -1);
+    else if (lr === 3) s += (pos === 3 || pos === 4) ? 4 : (pos === 2 ? -3 : -1);
+    else if (lr === 4) s += (pos === 1 || pos === 3) ? 1 : 0;
+    if (x.is_roaming) s += pos === 4 ? 3 : 0;
+    const w = getWardsData(x).total;
+    if (w >= 10) s += pos === 5 ? 2.5 : pos === 4 ? 1.5 : -2;
+    const roles = hero(x.hero_id).roles || [];
+    if ((pools[pos] || []).includes(x.hero_id)) s += 2.5;
+    if (roles.includes('Support')) s += pos >= 4 ? 1.5 : -1;
+    if (roles.includes('Carry')) s += pos <= 2 ? 1 : (pos >= 4 ? -1 : 0);
+    return s;
+  };
+  const res = new Map();
+  if (team.length === 5) {
+    const F = team.map(x => [0, 1, 2, 3, 4, 5].map(pos => pos ? fit(x, pos) : 0));
+    let best = PERMS_5[0], bestS = -Infinity;
+    for (const perm of PERMS_5) {
+      let s = 0;
+      for (let i = 0; i < 5; i++) s += F[i][perm[i]];
+      if (s > bestS) { bestS = s; best = perm; }
+    }
+    team.forEach((x, i) => res.set(x.player_slot, best[i]));
+  } else {
+    order.forEach((x, i) => res.set(x.player_slot, Math.min(5, i + 1)));
+  }
+  _teamPosCache.set(key, res);
+  return res;
+}
+
 function detectRole(p, team, mins) {
-  const score = x => (x.gold_per_min || 0) + (x.last_hits || 0) / mins * 40;
-  const rank = [...team].sort((a, b) => score(b) - score(a)).indexOf(p) + 1;
+  const asg = assignTeamPositions(team, mins);
+  const pos = asg.get(p.player_slot) || 3;
   const wards = getWardsData(p).total;
   const lhpm = (p.last_hits || 0) / mins;
-  const isSup = rank >= 4 || wards >= 8 || lhpm < 2.5;
-  const lane = p.lane_role;
-  let pos = rank;
-  if (isSup) pos = wards >= 12 || lhpm < 1.4 ? 5 : 4;
-  else if (lane === 2) pos = 2;
-  else pos = rank <= 1 ? 1 : (rank === 2 ? 2 : 3);
-  const names = { 1:'Pos 1 · Carry', 2:'Pos 2 · Mid', 3:'Pos 3 · Offlane', 4:'Pos 4 · Soft Support', 5:'Pos 5 · Hard Support' };
-  return { pos, label: names[pos], core: pos <= 3, lhpm, why: `GPM ${p.gold_per_min || 0}, ${lhpm.toFixed(1)} LH/хв, вардів: ${wards}` };
+  const laneTxt = { 1: 'безпечна лінія', 2: 'центр', 3: 'складна лінія', 4: 'ліс' }[p.lane_role] || 'лінія невідома';
+  return { pos, label: POS_NAMES[pos], core: pos <= 3, lhpm, why: `${laneTxt}, GPM ${p.gold_per_min || 0}, ${lhpm.toFixed(1)} LH/хв, вардів: ${wards}` };
 }
 
 /* ======================= Stratz-style Impact Score (IMP) ======================= */
@@ -1067,7 +1191,7 @@ function renderAnalysis() {
   const rk = m.radiant_score ?? 0, dk = m.dire_score ?? 0;
   const swItem = x => {
     const isCur = x.player_slot === p.player_slot;
-    return `<button class="hero-mini-btn ${isCur ? 'on' : ''}" data-slot="${x.player_slot}" title="${esc(hero(x.hero_id).dname)}${x.personaname ? ' — ' + esc(x.personaname) : ''}">
+    return `<button class="hero-mini-btn ${isCur ? 'on' : ''}" data-slot="${x.player_slot}" aria-label="${esc(hero(x.hero_id).dname)}" aria-pressed="${isCur}" title="${esc(hero(x.hero_id).dname)}${x.personaname ? ' — ' + esc(x.personaname) : ''}">
       <img src="${heroImg(x.hero_id)}" alt="">
     </button>`;
   };
@@ -1172,7 +1296,7 @@ function renderFloatingHeroDock(m, rad, dire, curPlayer) {
     const role = detectRole(pl, pl.player_slot < 128 ? rad : dire, Math.max(1, dur / 60));
     const imp = calcPlayerImpact(pl, pl.player_slot < 128 ? rad : dire, pl.player_slot < 128 ? dire : rad, m, role);
     return `
-      <button class="dock-hero-btn ${isCur ? 'on' : ''}" data-slot="${pl.player_slot}" title="${esc(H.dname)}${pl.personaname ? ' (' + esc(pl.personaname) + ')' : ''} · ${role.label} · ${pl.kills}/${pl.deaths}/${pl.assists} · IMP ${imp.score >= 0 ? '+' : ''}${imp.score}">
+      <button class="dock-hero-btn ${isCur ? 'on' : ''}" data-slot="${pl.player_slot}" aria-label="${esc(H.dname)}" aria-pressed="${isCur}" title="${esc(H.dname)}${pl.personaname ? ' (' + esc(pl.personaname) + ')' : ''} · ${role.label} · ${pl.kills}/${pl.deaths}/${pl.assists} · IMP ${imp.score >= 0 ? '+' : ''}${imp.score}">
         <img src="${heroImg(pl.hero_id)}" alt="${esc(H.dname)}">
         <span class="dock-hero-lvl">${pl.level || ''}</span>
       </button>
@@ -1273,52 +1397,46 @@ function secHeroDetailCard(ctx) {
 }
 
 /* ======================= Аналіз Драфту та Математика Героїв ======================= */
-// Каталог альтернатив за 5 позиціями для заміни у разі контр-піку
-const ROLE_SUBSTITUTES = {
-  1: [ // Pos 1 (Safelane Carry)
-    { id: 8, name: 'Juggernaut', reason: 'Blade Fury дає ранній імунітет до магії' },
-    { id: 70, name: 'Ursa', reason: 'Enrage переживає баш і фокус' },
-    { id: 54, name: 'Lifestealer', reason: 'Rage захищає від контролю' },
-    { id: 42, name: 'Wraith King', reason: 'Reincarnation дозволяє пережити перший локдаун' },
-    { id: 93, name: 'Slark', reason: 'Dark Pact знімає дебафи' },
-    { id: 44, name: 'Phantom Assassin', reason: 'Blur тримає дистанцію' },
-    { id: 18, name: 'Sven', reason: 'Cleave та броня Warcry' },
-    { id: 48, name: 'Luna', reason: 'Швидкий темп та Eclipse' }
-  ],
-  2: [ // Pos 2 (Midlaner)
-    { id: 13, name: 'Puck', reason: 'Phase Shift ухиляється від направлених спелів' },
-    { id: 17, name: 'Storm Spirit', reason: 'Ball Lightning дає повну невразливість у польоті' },
-    { id: 49, name: 'Dragon Knight', reason: 'Dragon Blood дає виживаність проти фокусу' },
-    { id: 106, name: 'Ember Spirit', reason: 'Sleight of Fist та Remnants для мобільності' },
-    { id: 120, name: 'Pangolier', reason: 'Rolling Thunder пробиває файт' },
-    { id: 76, name: 'Outworld Destroyer', reason: 'Astral Imprisonment ховає від прокастів' },
-    { id: 52, name: 'Leshrac', reason: 'Магічний лайфстіл Bloodstone' },
-    { id: 25, name: 'Lina', reason: 'Далекий рендж атаки та берст' }
-  ],
-  3: [ // Pos 3 (Offlaner)
-    { id: 96, name: 'Centaur Warrunner', reason: 'Stampede дає масовий порятунок та ініціацію' },
-    { id: 2, name: 'Axe', reason: 'Berserker Call контролює крізь BKB' },
-    { id: 29, name: 'Tidehunter', reason: 'Kraken Shell знімає дебафи, Ravage' },
-    { id: 28, name: 'Slardar', reason: 'Corrosive Haze зрізає броню' },
-    { id: 129, name: 'Mars', reason: 'Arena of Blood зонує бійку' },
-    { id: 108, name: 'Underlord', reason: 'Atrophy Aura послаблює фізичний урон' }
-  ],
-  4: [ // Pos 4 (Soft Support)
-    { id: 71, name: 'Spirit Breaker', reason: 'Charge дає огляд і збиває ключові касти' },
-    { id: 86, name: 'Rubick', reason: 'Телекінез та крадіжка ключових ультів' },
-    { id: 51, name: 'Clockwerk', reason: 'Hookshot та коги дають надійний врив' },
-    { id: 7, name: 'Earthshaker', reason: 'Fissure блокує проходи' },
-    { id: 100, name: 'Tusk', reason: 'Snowball сейвить союзників' }
-  ],
-  5: [ // Pos 5 (Hard Support)
-    { id: 87, name: 'Disruptor', reason: 'Static Storm блокує спели' },
-    { id: 112, name: 'Winter Wyvern', reason: 'Cold Embrace повністю блокує фізику' },
-    { id: 79, name: 'Shadow Demon', reason: 'Disruption рятує від фокусу' },
-    { id: 64, name: 'Jakiro', reason: 'Ice Path зупиняє розгін' },
-    { id: 31, name: 'Lich', reason: 'Frost Shield ріже фізичний урон' },
-    { id: 83, name: 'Treant Protector', reason: 'Living Armor сейвить союзників глобально' }
-  ]
-};
+// Реальні матчапи OpenDota: /heroes/{id}/matchups -> { enemyId: [games, wins] }
+async function loadHeroMatchups(ids) {
+  state.matchups = state.matchups || {};
+  const TTL = 3 * 24 * 60 * 60 * 1000;
+  const need = [];
+  [...new Set(ids)].forEach(id => {
+    if (state.matchups[id] !== undefined) return;
+    try {
+      const cch = JSON.parse(localStorage.getItem('d2_mu_' + id) || 'null');
+      if (cch && cch.data && Date.now() - cch.ts < TTL) { state.matchups[id] = cch.data; return; }
+    } catch {}
+    need.push(id);
+  });
+  for (let i = 0; i < need.length; i += 5) {
+    await Promise.all(need.slice(i, i + 5).map(async id => {
+      try {
+        const arr = await api(`/heroes/${id}/matchups`);
+        const map = {};
+        (arr || []).forEach(r => { map[r.hero_id] = [r.games_played || 0, r.wins || 0]; });
+        state.matchups[id] = map;
+        try { localStorage.setItem('d2_mu_' + id, JSON.stringify({ ts: Date.now(), data: map })); } catch {}
+      } catch { state.matchups[id] = null; }
+    }));
+  }
+}
+
+// Перевага героя A проти B у відсотках вінрейту (з байєсівським згладжуванням малих вибірок)
+function matchupAdv(aId, bId) {
+  const ma = state.matchups?.[aId]?.[bId];
+  const mb = state.matchups?.[bId]?.[aId];
+  let g = 0, w = 0;
+  if (ma && (!mb || ma[0] >= mb[0])) { g = ma[0]; w = ma[1]; }
+  else if (mb) { g = mb[0]; w = mb[0] - mb[1]; }
+  if (g >= 8) {
+    const K = 25;
+    const wr = (w + 0.5 * K) / (g + K);
+    return { v: Number(Math.max(-9, Math.min(9, (wr - 0.5) * 100)).toFixed(1)), n: g, real: true };
+  }
+  return { v: calcHeroPairwise(hero(aId), hero(bId)), n: g, real: false };
+}
 
 // Точний попарний розрахунок переваги героя A проти героя B (Stratz-style)
 function calcHeroPairwise(hA, hB) {
@@ -1375,124 +1493,71 @@ function calcHeroPairwise(hA, hB) {
   return Number(Math.max(-3.5, Math.min(3.5, delta)).toFixed(1));
 }
 
-function calcHeroDraftAdvantage(h, team, enemies, p, role) {
-  const metaDelta = Math.max(-2.5, Math.min(2.5, ((h.winrate || 0.50) - 0.50) * 100));
-  const goodVs = [];
-  const badVs = [];
-  const synergies = [];
-  let betterPick = '';
-  let bestReason = '';
-  let note = '';
+function calcHeroDraftAdvantage(h, team, enemies, p, role, usedRecs = new Set()) {
+  const pos = role?.pos || 3;
+  const posLabel = `Pos ${pos}`;
+  const roleName = (role?.label || '').split('·')[1]?.trim() || '';
+  const r1 = v => Number(v.toFixed(1));
+  const sg = v => (v >= 0 ? '+' : '') + v.toFixed(1);
+  const taken = new Set([...team, ...enemies].map(x => x.hero_id));
 
-  const pos = role?.pos || (role?.core ? 1 : 4);
-  const posLabel = role?.label ? role.label.split('·')[0].trim() : `Pos ${pos}`;
-  const roleName = role?.label ? role.label.split('·')[1]?.trim() || '' : '';
-
-  // Множина ID ВСІХ зайнятих героїв матчу (обидві команди) — гарантія відсутності накладок
-  const takenHeroIds = new Set([
-    ...team.map(t => t.hero_id),
-    ...enemies.map(e => e.hero_id)
-  ]);
-
-  // Безпечний підбір заміни СУВОРО за позицією гравця і без зайнятих героїв
-  const getSubstitutes = (options) => {
-    const available = [];
-    for (const opt of options) {
-      if (!takenHeroIds.has(opt.id)) {
-        available.push(opt);
-        if (available.length >= 2) break;
-      }
-    }
-    return available;
-  };
-  const safeSuggest = (options) => {
-    const subs = getSubstitutes(options);
-    if (!subs.length) return '';
-    return subs.map(opt => `${opt.name}${opt.reason ? ` (${opt.reason})` : ''}`).join(' або ');
-  };
-
-  // Розрахунок Stratz-style матриці проти кожного з 5 ворогів
   const pairwiseVsEnemies = enemies.map(e => {
-    const eHero = hero(e.hero_id);
-    const s = calcHeroPairwise(h, eHero);
-    return { hero: eHero, score: s };
+    const r = matchupAdv(h.id, e.hero_id);
+    return { hero: hero(e.hero_id), score: r.v, n: r.n, real: r.real };
   });
+  const counterScore = r1(pairwiseVsEnemies.reduce((s, x) => s + x.score, 0));
+  const realCount = pairwiseVsEnemies.filter(x => x.real).length;
+  const sortedVs = [...pairwiseVsEnemies].sort((a, b) => b.score - a.score);
+  const goodVs = sortedVs.filter(x => x.score >= 1).map(x => `${x.hero.dname} ${sg(x.score)}`);
+  const badVs = sortedVs.filter(x => x.score <= -1).reverse().map(x => `${x.hero.dname} ${sg(x.score)}`);
 
-  const counterScore = Number(pairwiseVsEnemies.reduce((s, x) => s + x.score, 0).toFixed(1));
+  // Кандидати тієї самої позиції, ранжовані за реальною сумою матчапів проти цих 5 ворогів
+  const pool = positionPools()[pos] || [];
+  const cands = pool.filter(id => !taken.has(id) && id !== h.id).map(id => {
+    const rows = enemies.map(e => ({ e, r: matchupAdv(id, e.hero_id) }));
+    return { id, name: hero(id).dname, score: r1(rows.reduce((s, x) => s + x.r.v, 0)), real: rows.filter(x => x.r.real).length, rows };
+  }).filter(cd => cd.real >= Math.min(3, realCount)).sort((a, b) => b.score - a.score);
 
-  // Позначки переваг / вразливостей на основі попарного аналізу
-  pairwiseVsEnemies.forEach(pe => {
-    if (pe.score >= 1.5) goodVs.push(`${pe.hero.dname} (+${pe.score.toFixed(1)}%)`);
-    else if (pe.score <= -1.5) badVs.push(`${pe.hero.dname} (${pe.score.toFixed(1)}%)`);
+  const betterCount = cands.filter(cd => cd.score > counterScore).length;
+  const better = cands.filter(cd => !usedRecs.has(cd.id) && cd.score - counterScore >= 2.0).slice(0, 2);
+  const substitutes = better.map(cd => {
+    const strong = [...cd.rows].sort((a, b) => b.r.v - a.r.v).filter(x => x.r.v > 0).slice(0, 2);
+    return {
+      id: cd.id, name: cd.name, delta: r1(cd.score - counterScore), score: cd.score,
+      reason: `${sg(cd.score)}% проти цього складу (у ${h.dname} ${sg(counterScore)}%).` +
+        (strong.length ? ' Сильний проти: ' + strong.map(x => `${hero(x.e.hero_id).dname} ${sg(x.r.v)}`).join(', ') + '.' : '')
+    };
   });
+  substitutes.forEach(s => usedRecs.add(s.id));
 
-  // Героєспецифічні обґрунтування
-  let substitutes = [];
-  if (h.id === 39) { // Queen of Pain
-    if (badVs.length) {
-      substitutes = getSubstitutes(ROLE_SUBSTITUTES[2]);
-      const sug = safeSuggest(ROLE_SUBSTITUTES[2]);
-      if (sug) betterPick = `Для ${posLabel} (Mid) проти контролю ворога краще зіграти на ${sug}.`;
-    }
-  } else if (h.id === 42) { // Wraith King
-    if (badVs.length) {
-      const cands = ROLE_SUBSTITUTES[pos] || ROLE_SUBSTITUTES[1];
-      substitutes = getSubstitutes(cands);
-      const sug = safeSuggest(cands);
-      if (sug) betterPick = `Для ${posLabel} проти активного темпу краще взяти ${sug}.`;
-    } else {
-      bestReason = 'Reincarnation гарантує надійність у бійках, а відсутність сильного манаберну дозволяє вільно ініціювати.';
-    }
-  } else if (h.id === 8) { // Juggernaut
-    if (badVs.length) {
-      const cands = ROLE_SUBSTITUTES[pos] || ROLE_SUBSTITUTES[1];
-      substitutes = getSubstitutes(cands);
-      const sug = safeSuggest(cands);
-      if (sug) betterPick = `Для ${posLabel} проти контролю крізь BKB краще обрати ${sug}.`;
-    } else {
-      bestReason = 'Blade Fury дає ранній імунітет до магії, Omnislash стабільно реалізує розміни.';
-    }
-  } else if (h.id === 70) { // Ursa
-    if (badVs.length) {
-      const cands = ROLE_SUBSTITUTES[pos] || ROLE_SUBSTITUTES[1];
-      substitutes = getSubstitutes(cands);
-      const sug = safeSuggest(cands);
-      if (sug) betterPick = `Для ${posLabel} проти кайту ворога краще взяти ${sug}.`;
-    } else {
-      bestReason = 'Fury Swipes вибухово забирає Рошана і дозволяє впевнено вигравати мілі-дуелі.';
-    }
+  const verdict = substitutes.length ? 'swap' : betterCount <= 2 ? 'best' : 'ok';
+  let bestReason = '';
+  if (verdict === 'best') {
+    bestReason = betterCount === 0
+      ? `Найкращий доступний вибір на ${posLabel} проти цього складу.`
+      : `Топ-${betterCount + 1} з ${cands.length + 1} героїв ${posLabel}.`;
+    if (goodVs.length) bestReason += ' Сильний проти: ' + goodVs.slice(0, 2).join(', ') + '.';
+  } else if (verdict === 'ok') {
+    bestReason = `Є ${betterCount} варіант(ів) трохи кращих, але різниця < 2% — пік прийнятний.`;
   } else {
-    // Якщо герой має відчутний мінус у драфті — пропонуємо заміну СУВОРО за його позицією
-    if (counterScore <= -1.2) {
-      const candidates = ROLE_SUBSTITUTES[pos] || ROLE_SUBSTITUTES[role?.core ? 1 : 4];
-      substitutes = getSubstitutes(candidates);
-      const sug = safeSuggest(candidates);
-      if (sug) {
-        betterPick = `Для ${posLabel} (${roleName}) краще підійде ${sug}.`;
-      }
-    }
-    if (!note) {
-      note = counterScore >= 0 ? 'Збалансований темп та надійна роль у композиції команди.' : 'Потребує обережності на лінії та ранніх захисних артефактів.';
-    }
+    bestReason = badVs.length ? 'Слабкий проти: ' + badVs.slice(0, 2).join(', ') + '.' : 'Сумарно програє матчапи цьому складу.';
   }
 
-  const rawTotal = Number((metaDelta + counterScore).toFixed(1));
-  const isBest = !betterPick && (counterScore >= 1.2 || rawTotal >= 1.5);
-
   return {
-    rawScore: rawTotal,
-    isBestPick: isBest,
-    goodVs: goodVs,
-    badVs: badVs,
-    synergies: synergies,
-    betterPick: betterPick,
-    substitutes: substitutes,
-    bestReason: bestReason,
-    note: note,
-    pairwiseVsEnemies: pairwiseVsEnemies,
-    pos: pos,
-    posLabel: posLabel,
-    roleName: roleName
+    rawScore: counterScore,
+    isBestPick: verdict === 'best',
+    verdict,
+    goodVs, badVs,
+    synergies: [],
+    betterPick: substitutes.length ? substitutes.map(s => s.name).join(' або ') : '',
+    substitutes,
+    bestReason,
+    note: '',
+    pairwiseVsEnemies,
+    realCount,
+    betterCount,
+    poolSize: cands.length + 1,
+    pos, posLabel, roleName
   };
 }
 
@@ -1562,79 +1627,75 @@ function secDraftAnalysis(m, rad, dire) {
 
   const pillarDiff = ((ccR - ccD) * 0.08) + ((puR - puD) * 0.06) + ((tfR - tfD) * 0.08) + ((ltR - ltD) * 0.06) + ((tpR - tpD) * 0.06);
 
-  // Розрахунок драфту з точним прив'язуванням ролі та позиції
-  const rawRadItems = rad.map(x => {
-    const r = detectRole(x, rad, mins);
-    return { p: x, hero: hero(x.hero_id), role: r, ...calcHeroDraftAdvantage(hero(x.hero_id), rad, dire, x, r) };
-  }).sort((a, b) => a.pos - b.pos);
-
-  const rawDireItems = dire.map(x => {
-    const r = detectRole(x, dire, mins);
-    return { p: x, hero: hero(x.hero_id), role: r, ...calcHeroDraftAdvantage(hero(x.hero_id), dire, rad, x, r) };
-  }).sort((a, b) => a.pos - b.pos);
+  // Розрахунок драфту: унікальні позиції 1–5 + реальні матчапи
+  const usedR = new Set(), usedD = new Set();
+  const rawRadItems = rad.map(x => ({ x, r: detectRole(x, rad, mins) })).sort((a, b) => a.r.pos - b.r.pos)
+    .map(({ x, r }) => ({ p: x, hero: hero(x.hero_id), role: r, ...calcHeroDraftAdvantage(hero(x.hero_id), rad, dire, x, r, usedR) }));
+  const rawDireItems = dire.map(x => ({ x, r: detectRole(x, dire, mins) })).sort((a, b) => a.r.pos - b.r.pos)
+    .map(({ x, r }) => ({ p: x, hero: hero(x.hero_id), role: r, ...calcHeroDraftAdvantage(hero(x.hero_id), dire, rad, x, r, usedD) }));
 
   const radMath = calibrateDraftScores(rawRadItems, 0);
   const direMath = calibrateDraftScores(rawDireItems, 0);
 
   const sumScoreR = Number(radMath.reduce((s, x) => s + x.score, 0).toFixed(1));
   const sumScoreD = Number(direMath.reduce((s, x) => s + x.score, 0).toFixed(1));
+  const realPairs = radMath.reduce((s, x) => s + x.realCount, 0) + direMath.reduce((s, x) => s + x.realCount, 0);
 
-  const totalAdvantage = Math.max(-22.0, Math.min(22.0, ((sumScoreR - sumScoreD) / 2) + pillarDiff));
-  const probR = Math.max(28, Math.min(72, Math.round(50 + totalAdvantage)));
+  // Сума 25 попарних матчапів кожної сторони (A vs B ≈ −(B vs A)), тому ділимо різницю навпіл
+  const totalAdvantage = (sumScoreR - sumScoreD) / 2;
+  const probR = Math.max(25, Math.min(75, Math.round(50 + totalAdvantage)));
   const probD = 100 - probR;
   const favTeam = probR > probD ? 'Radiant' : probD > probR ? 'Dire' : 'Рівний драфт';
   const favDiff = Math.abs(probR - probD);
 
+  const sg = v => (v >= 0 ? '+' : '') + v.toFixed(1);
   const renderStratzCard = item => {
     const scoreCls = item.score > 0 ? 'pos' : item.score < 0 ? 'neg' : '';
-    const hasSubs = (item.substitutes && item.substitutes.length > 0) || Boolean(item.betterPick);
-    const cardCls = item.isBestPick ? 'best' : hasSubs ? 'weak' : '';
-    const subList = item.substitutes && item.substitutes.length
-      ? item.substitutes
-      : (item.betterPick ? [{ name: item.betterPick.replace(/.*краще (?:взяти|обрати|підійде|зіграти на) /i, '').split(' або ')[0] }] : []);
-
+    const cardCls = item.verdict === 'best' ? 'best' : item.verdict === 'swap' ? 'weak' : '';
+    const posTitle = `${esc(item.role.label)} — ${esc(item.role.why)}`;
     return `
       <div class="stratz-hero-card ${cardCls}">
         <div class="stratz-hero-img-wrap">
           <img src="${heroImg(item.hero.id)}" alt="${esc(item.hero.dname)}" loading="lazy">
         </div>
-        <div class="stratz-role-badge">${esc(item.posLabel)}</div>
+        <div class="stratz-role-badge" title="${posTitle}">${esc(item.posLabel)}</div>
         <div class="stratz-hero-name" title="${esc(item.hero.dname)}">${esc(item.hero.dname)}</div>
-        <div class="stratz-hero-score ${scoreCls}">${item.score >= 0 ? '+' : ''}${item.score.toFixed(1)}%</div>
+        <div class="stratz-hero-score ${scoreCls}" title="Сума 5 матчапів нижче">${sg(item.score)}%</div>
 
         <div class="stratz-vs-matrix">
           ${item.pairwiseVsEnemies.map(pe => `
-            <div class="stratz-vs-row" title="Матчап проти ${esc(pe.hero.dname)}: ${pe.score >= 0 ? '+' : ''}${pe.score.toFixed(1)}%">
+            <div class="stratz-vs-row" title="${esc(item.hero.dname)} проти ${esc(pe.hero.dname)}: ${sg(pe.score)}% ${pe.real ? '(' + pe.n + ' ігор, OpenDota)' : '(мало даних — евристична оцінка)'}">
               <div class="stratz-vs-left">
-                <img src="${heroImg(pe.hero.id)}" alt="${esc(pe.hero.dname)}">
+                <img src="${heroImg(pe.hero.id)}" alt="">
                 <span class="stratz-vs-hname">${esc(pe.hero.dname)}</span>
               </div>
-              <span class="stratz-vs-val ${pe.score > 0 ? 'pos' : pe.score < 0 ? 'neg' : 'zero'}">${pe.score >= 0 ? '+' : ''}${pe.score.toFixed(1)}</span>
+              <span class="stratz-vs-val ${pe.score > 0 ? 'pos' : pe.score < 0 ? 'neg' : 'zero'}">${pe.real ? '' : '≈'}${sg(pe.score)}</span>
             </div>
           `).join('')}
         </div>
 
-        ${hasSubs ? `
+        ${item.verdict === 'swap' ? `
           <div class="stratz-advice-mini neg">
             <div class="stratz-sub-badge">Краща заміна</div>
             <div class="stratz-sub-chips">
-              ${subList.map(s => `
-                <span class="stratz-chip" title="${esc(s.reason || 'Оптимальний вибір на цю позицію')}">
-                  ${s.id ? `<img src="${heroImg(s.id)}" alt="" class="stratz-chip-img">` : ''}
-                  <span>${esc(s.name)}</span>
+              ${item.substitutes.map(s => `
+                <span class="stratz-chip" title="${esc(s.reason)}">
+                  <img src="${heroImg(s.id)}" alt="" class="stratz-chip-img">
+                  <span>${esc(s.name)}</span><b class="stratz-chip-delta">+${s.delta.toFixed(1)}</b>
                 </span>
               `).join('')}
             </div>
+            <div class="stratz-sub-text" title="${esc(item.bestReason)}">${esc(item.bestReason)}</div>
           </div>
-        ` : item.isBestPick ? `
+        ` : item.verdict === 'best' ? `
           <div class="stratz-advice-mini pos">
-            <div class="stratz-sub-badge good">★ Топ-пік</div>
-            <div class="stratz-sub-text" title="${esc(item.bestReason || 'Високий синергетичний потенціал')}">${esc(item.bestReason ? (item.bestReason.slice(0, 36) + (item.bestReason.length > 36 ? '...' : '')) : 'Сильний матчап')}</div>
+            <div class="stratz-sub-badge good">${item.betterCount === 0 ? '★ Найкращий вибір' : '★ Топ-пік'}</div>
+            <div class="stratz-sub-text" title="${esc(item.bestReason)}">${esc(item.bestReason)}</div>
           </div>
         ` : `
           <div class="stratz-advice-mini neu">
-            <div class="stratz-sub-badge neutral">Баланс</div>
-            <div class="stratz-sub-text">Стабільний пік</div>
+            <div class="stratz-sub-badge neutral">Прийнятно</div>
+            <div class="stratz-sub-text" title="${esc(item.bestReason)}">${esc(item.bestReason)}</div>
           </div>
         `}
       </div>
@@ -1643,7 +1704,8 @@ function secDraftAnalysis(m, rad, dire) {
 
   return `<section class="card">
     <h2><span class="sec-tag">01</span>Оцінка драфту (Stratz-style Matchup Matrix)</h2>
-    <p class="sub">Попарна матриця контр-піків кожного героя проти 5 ворогів та позиційно-відкалібровані рекомендації замін.</p>
+    <p class="sub">Кожне число — відхилення вінрейту героя від 50% проти конкретного ворога за статистикою матчапів OpenDota (малі вибірки згладжені; «≈» — даних замало, евристика). Бал героя = сума 5 матчапів. Позиції розподілені унікально 1–5 за лінією, фармом і вардами. Заміни підбираються з пулу героїв <b>тієї самої позиції</b> за реальною сумою матчапів проти цього ворожого складу і показуються, лише якщо дають ≥ +2%.</p>
+    <p class="hint-line" style="margin-top:-8px">Покриття реальними даними: <b>${realPairs}/50</b> пар.</p>
 
     <div class="draft-prob">
       <span class="rad-txt">Radiant: ${probR}%</span>
@@ -1720,7 +1782,7 @@ function secInteractiveGraphs(m, rad, dire, curPlayer) {
     <p class="sub">Похвилинна динаміка золота, досвіду, індивідуального нетворсу 10 героїв та розрахунковий шанс на перемогу.</p>
 
     <div class="graph-tabs-row">
-      <div class="graph-tabs" id="graphTabBtns">
+      <div class="graph-tabs" id="graphTabBtns" role="tablist" aria-label="Тип графіка">
         <button class="graph-tab active" data-tab="gold">Перевага золота (Net Worth Lead)</button>
         <button class="graph-tab" data-tab="xp">Перевага досвіду (XP Lead)</button>
         <button class="graph-tab" data-tab="players">Криві нетворсу (10 героїв)</button>
@@ -1734,7 +1796,7 @@ function secInteractiveGraphs(m, rad, dire, curPlayer) {
 
     <div class="graph-cont" id="graphContainer">
       <div class="graph-tip" id="graphTip"></div>
-      <svg class="graph-svg" id="matchSvg" viewBox="0 0 800 220" preserveAspectRatio="none">
+      <svg class="graph-svg" id="matchSvg" viewBox="0 0 800 220" preserveAspectRatio="none" role="img" aria-label="Графік переваги золота Radiant над Dire по хвилинах">
         <!-- SVG генерується динамічно -->
       </svg>
       <div class="graph-legend" id="graphLegend"></div>
@@ -2138,8 +2200,8 @@ function initGraphEvents(m, rad, dire, curPlayer) {
       tip.innerHTML = `
         <div style="font-weight:750;margin-bottom:3px">${t}:00 (Хвилина ${t})</div>
         <div style="color:var(--accent);font-weight:700">Обраний: ${esc(hero(curPlayer.hero_id).dname)} — ${nf(curG)} gold</div>
-        ${topRad ? `<div style="color:var(--good);font-size:11px">Топ Radiant: ${esc(hero(topRad.pl.hero_id).dname)} (${nf(topRad.g)})</div>` : ''}
-        ${topDire ? `<div style="color:var(--crit);font-size:11px">Топ Dire: ${esc(hero(topDire.pl.hero_id).dname)} (${nf(topDire.g)})</div>` : ''}
+        ${topRad ? `<div style="color:var(--good);font-size:12px">Топ Radiant: ${esc(hero(topRad.pl.hero_id).dname)} (${nf(topRad.g)})</div>` : ''}
+        ${topDire ? `<div style="color:var(--crit);font-size:12px">Топ Dire: ${esc(hero(topDire.pl.hero_id).dname)} (${nf(topDire.g)})</div>` : ''}
       `;
       tip.style.left = Math.min(cx, 800 - 160) + 'px';
       tip.style.top = (220 / 2) + 'px';
@@ -2153,7 +2215,14 @@ function initGraphEvents(m, rad, dire, curPlayer) {
     };
   }
 
+  const GRAPH_LABELS = {
+    gold: 'Графік переваги золота Radiant над Dire по хвилинах',
+    xp: 'Графік переваги досвіду Radiant над Dire по хвилинах',
+    players: 'Криві нетворсу всіх 10 героїв по хвилинах',
+    winprob: 'Орієнтовний шанс перемоги Radiant по хвилинах'
+  };
   function update() {
+    $('#matchSvg')?.setAttribute('aria-label', GRAPH_LABELS[currentTab] || 'Графік матчу');
     if (currentTab === 'gold') renderAdvGraph(goldAdv, true);
     else if (currentTab === 'xp') renderAdvGraph(xpAdv, false);
     else if (currentTab === 'winprob') renderWinProbGraph();
@@ -2363,7 +2432,7 @@ function secMatchOutcome(m, rad, dire) {
         <img src="${heroImg(item.hero.id)}" alt="">
         <div class="imp-card-main">
           <div class="imp-card-top">
-            <span class="imp-card-name">${esc(item.hero.dname)} <span class="muted" style="font-weight:400;font-size:11px">(${item.role.label.split('·')[0].trim()})</span></span>
+            <span class="imp-card-name">${esc(item.hero.dname)} <span class="muted" style="font-weight:400;font-size:12px">(${item.role.label.split('·')[0].trim()})</span></span>
             <span class="imp-tag ${badgeCls}">${badgeText}</span>
           </div>
           <div class="imp-card-stats">
@@ -2681,7 +2750,7 @@ function secFairPlayAudit(m, rad, dire) {
                 <img src="${heroImg(f.h.id)}" alt="${esc(f.h.dname)}">
                 <div>
                   <div class="name">${esc(f.h.dname)} <span class="muted" style="font-weight:400;font-size:12px">(${esc(f.name)})</span></div>
-                  <div style="font-size:11px;color:var(--muted)">Команда: <span style="font-weight:700;color:${f.teamColor}">${f.teamName}</span> · KDA: <b>${f.p.kills || 0}/${f.p.deaths || 0}/${f.p.assists || 0}</b> · APM: <b>${f.p.actions_per_min || '—'}</b> · Урон: <b>${Math.round((f.p.hero_damage || 0) / (f.p.player_slot < 128 ? radDmg : direDmg) * 100)}%</b></div>
+                  <div style="font-size:12px;color:var(--muted)">Команда: <span style="font-weight:700;color:${f.teamColor}">${f.teamName}</span> · KDA: <b>${f.p.kills || 0}/${f.p.deaths || 0}/${f.p.assists || 0}</b> · APM: <b>${f.p.actions_per_min || '—'}</b> · Урон: <b>${Math.round((f.p.hero_damage || 0) / (f.p.player_slot < 128 ? radDmg : direDmg) * 100)}%</b></div>
                 </div>
               </div>
               <div class="fp-badge-row">
@@ -2767,10 +2836,10 @@ function initDossierHandlers() {
             </div>
             ${aliases.length ? `
               <div style="margin-top:6px">
-                <span class="muted" style="font-size:11px">Попередні нікнейми (Aliases):</span>
+                <span class="muted" style="font-size:12px">Попередні нікнейми (Aliases):</span>
                 <div style="margin-top:3px">${aliasList}</div>
               </div>
-            ` : '<div class="muted" style="font-size:11px">Історії зміни нікнеймів не зафіксовано.</div>'}
+            ` : '<div class="muted" style="font-size:12px">Історії зміни нікнеймів не зафіксовано.</div>'}
           </div>
         `;
         box.style.display = 'block';
@@ -3575,15 +3644,18 @@ function renderPlan(ctx, tasks) {
 }
 
 /* ======================= Тема та ініціалізація ======================= */
-function applyTheme(t) {
+function applyTheme(t, persist = true) {
   document.documentElement.dataset.theme = t;
   $('#themeBtn').textContent = t === 'dark' ? 'Тема: Світла' : 'Тема: Темна';
-  try { localStorage.setItem('d2coach_theme', t); } catch {}
+  $('#themeBtn').setAttribute('aria-pressed', String(t === 'light'));
+  if (persist) { try { localStorage.setItem('d2coach_theme', t); } catch {} }
 }
 
 async function init() {
-  const savedT = localStorage.getItem('d2coach_theme') || 'dark';
-  applyTheme(savedT);
+  let savedT = null;
+  try { savedT = localStorage.getItem('d2coach_theme'); } catch {}
+  const sysLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+  applyTheme(savedT || (sysLight ? 'light' : 'dark'), !!savedT);
   $('#themeBtn').addEventListener('click', () => {
     const cur = document.documentElement.dataset.theme;
     applyTheme(cur === 'dark' ? 'light' : 'dark');
@@ -3611,11 +3683,6 @@ async function init() {
   });
 
   window.run = run;
-  $('#searchForm').addEventListener('submit', e => {
-    e.preventDefault();
-    const v = $('#q').value;
-    if (v) run(v);
-  });
 
   document.addEventListener('click', e => {
     const qBtn = e.target.closest('[data-quick]');
@@ -3626,8 +3693,9 @@ async function init() {
     }
   });
 
-  // Автостарт для ID за замовчуванням
-  run($('#q').value);
+  // Автостарт лише за прямим посиланням: ?q=ID або #ID
+  const deep = new URLSearchParams(location.search).get('q') || location.hash.replace('#', '').trim();
+  if (deep) { $('#q').value = deep; run(deep); }
 }
 
 document.addEventListener('DOMContentLoaded', init);
