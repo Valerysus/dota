@@ -1051,6 +1051,48 @@ function resolveLane(p) {
   return 'Лінія невідома';
 }
 
+const COMPONENT_MAP_STATIC = {
+  manta: ['yasha'],
+  sange_and_yasha: ['sange', 'yasha'],
+  kaya_and_sange: ['kaya', 'sange'],
+  yasha_and_kaya: ['yasha', 'kaya'],
+  gleipnir: ['maelstrom'],
+  mjollnir: ['maelstrom'],
+  bloodthorn: ['orchid'],
+  silver_edge: ['shadow_blade'],
+  hurricane_pike: ['force_staff']
+};
+
+function filterComponentItems(purchaseLog, itemsConst = {}) {
+  if (!Array.isArray(purchaseLog)) return [];
+  const log = [...purchaseLog];
+  const excludedIndices = new Set();
+  for (let i = 0; i < log.length; i++) {
+    const F = log[i];
+    if (!F || F.time == null) continue;
+    const tF = F.time;
+    const comps = itemsConst?.[F.key]?.components || COMPONENT_MAP_STATIC[F.key] || [];
+    if (!comps.length) continue;
+    for (const compKey of comps) {
+      let matchIdx = -1;
+      for (let j = i - 1; j >= 0; j--) {
+        const c = log[j];
+        if (c && c.key === compKey && c.time < tF && !excludedIndices.has(j)) {
+          matchIdx = j;
+          break;
+        }
+      }
+      if (matchIdx !== -1) {
+        const tc = log[matchIdx].time;
+        if (tc > 1080 || (tF - tc <= 300)) {
+          excludedIndices.add(matchIdx);
+        }
+      }
+    }
+  }
+  return log.filter((_, idx) => !excludedIndices.has(idx));
+}
+
 const PERMS_5 = (() => {
   const out = [];
   const rec = (arr, rest) => {
@@ -3221,11 +3263,10 @@ function secLaning(ctx) {
   return `<section class="card"><h2><span class="sec-tag">06</span>Фаза 1: Лейнінг (0:00 – 10:00)</h2>${out}</section>`;
 }
 
-/* ======================= Фаза 2: Предмети та контр-білд ======================= */
 function secItems(ctx) {
   const { p, role, parsed, turbo, enemies, mine, deathTimes, addTask } = ctx;
   let out = '';
-  const log = p.purchase_log || [];
+  const log = filterComponentItems(p.purchase_log || [], state.items);
   const firstBuy = {};
   log.forEach(e => { if (firstBuy[e.key] == null) firstBuy[e.key] = e.time; });
   const norms = role.core ? CORE_T : { ...Object.fromEntries(Object.entries(CORE_T).map(([k, v]) => [k, [v[0] + 300, v[1]]])), ...SUP_T };
