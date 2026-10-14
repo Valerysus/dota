@@ -437,36 +437,50 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .death-item-tip{color:var(--accent);font-size:12px;margin-top:5px;padding-top:4px;border-top:1px dashed rgba(255,255,255,.08)}
 
 
-/* Stratz-style Draft Grid */
-.stratz-draft-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
-@media(max-width:1100px){.stratz-draft-grid{grid-template-columns:1fr}}
-.stratz-team-col{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:14px}
-.stratz-team-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
-.stratz-team-title{font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px}
-.stratz-team-score{font-size:14px;font-weight:800}
-.stratz-heroes-row{display:grid;grid-template-columns:repeat(5, 1fr);gap:8px}
-@media(max-width:700px){.stratz-heroes-row{grid-template-columns:repeat(2, 1fr)}}
-.stratz-hero-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;text-align:center;transition:border-color .15s}
-.stratz-hero-card.best{border-color:var(--good)}
-.stratz-hero-card.weak{border-color:var(--crit)}
-.stratz-hero-img-wrap{position:relative;width:100%;aspect-ratio:16/9;border-radius:6px;overflow:hidden;margin-bottom:4px}
-.stratz-hero-img-wrap img{width:100%;height:100%;object-fit:cover}
-.stratz-role-badge{font-size:10px;font-weight:750;padding:2px 5px;border-radius:4px;background:rgba(0,0,0,.45);color:var(--text);margin-bottom:4px;white-space:nowrap}
-.stratz-hero-name{font-size:11.5px;font-weight:700;line-height:1.2;margin-bottom:3px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.stratz-hero-score{font-size:12.5px;font-weight:800;margin-bottom:6px}
+/* Stratz-style Draft Grid - Full Widescreen */
+.dash-full-section{width:100%;min-width:0;margin-bottom:20px}
+.stratz-draft-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:16px 0}
+@media(max-width:1180px){.stratz-draft-grid{grid-template-columns:1fr}}
+.stratz-team-col{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:16px;min-width:0}
+.stratz-team-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.stratz-team-title{font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px}
+.stratz-team-score{font-size:14px;font-weight:800;padding:3px 10px;border-radius:6px;font-variant-numeric:tabular-nums}
+.stratz-team-score.rad{background:var(--good-bg);color:var(--good);border:1px solid var(--good)}
+.stratz-team-score.dire{background:var(--crit-bg);color:var(--crit);border:1px solid var(--crit)}
+.stratz-heroes-row{display:grid;grid-template-columns:repeat(5, minmax(0, 1fr));gap:10px}
+@media(max-width:768px){.stratz-heroes-row{grid-template-columns:repeat(2, minmax(0, 1fr))}}
+.stratz-hero-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;text-align:center;transition:all .15s ease;min-width:0;overflow:hidden}
+.stratz-hero-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.25)}
+.stratz-hero-card.best{border-color:var(--good);box-shadow:0 0 10px rgba(143,188,143,.15)}
+.stratz-hero-card.weak{border-color:rgba(208,135,112,.6)}
+.stratz-hero-img-wrap{position:relative;width:100%;aspect-ratio:16/9;border-radius:6px;overflow:hidden;margin-bottom:6px;border:1px solid rgba(255,255,255,.08);box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.stratz-hero-img-wrap img{width:100%;height:100%;object-fit:cover;display:block}
+.stratz-role-badge{font-size:10.5px;font-weight:750;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,.5);color:var(--text);margin-bottom:4px;white-space:nowrap;border:1px solid rgba(255,255,255,.06)}
+.stratz-hero-name{font-size:12px;font-weight:750;line-height:1.2;margin-bottom:3px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stratz-hero-score{font-size:13px;font-weight:800;margin-bottom:8px;font-variant-numeric:tabular-nums}
 .stratz-hero-score.pos{color:var(--good)}
 .stratz-hero-score.neg{color:var(--crit)}
-.stratz-vs-matrix{width:100%;display:flex;flex-direction:column;gap:3px;background:rgba(0,0,0,.25);border-radius:6px;padding:4px;margin-bottom:6px}
-.stratz-vs-row{display:flex;align-items:center;justify-content:space-between;font-size:11px}
-.stratz-vs-row img{width:18px;height:11px;border-radius:2px;object-fit:cover}
-.stratz-vs-val{font-weight:750;font-size:10px}
+.stratz-vs-matrix{width:100%;display:flex;flex-direction:column;gap:3px;background:rgba(0,0,0,.25);border-radius:6px;padding:5px 4px;margin-bottom:8px}
+.stratz-vs-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;padding:2px 3px;border-radius:4px;transition:background .1s}
+.stratz-vs-row:hover{background:rgba(255,255,255,.06)}
+.stratz-vs-left{display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden}
+.stratz-vs-left img{width:22px;height:13px;border-radius:2px;object-fit:cover;flex:none}
+.stratz-vs-hname{font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70px}
+.stratz-vs-val{font-weight:750;font-size:10.5px;font-variant-numeric:tabular-nums;flex:none}
 .stratz-vs-val.pos{color:var(--good)}
 .stratz-vs-val.neg{color:var(--crit)}
 .stratz-vs-val.zero{color:var(--muted)}
-.stratz-advice-mini{font-size:10px;line-height:1.35;padding:4px 6px;border-radius:6px;width:100%;text-align:left;margin-top:auto}
-.stratz-advice-mini.pos{background:var(--good-bg);color:var(--good);border:1px solid var(--good)}
-.stratz-advice-mini.neg{background:var(--crit-bg);color:var(--crit);border:1px solid var(--crit)}
+.stratz-advice-mini{font-size:10.5px;line-height:1.35;padding:6px;border-radius:6px;width:100%;text-align:center;margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:4px;min-height:56px;justify-content:center}
+.stratz-advice-mini.pos{background:var(--good-bg);border:1px solid var(--good)}
+.stratz-advice-mini.neg{background:var(--crit-bg);border:1px solid rgba(208,135,112,.5)}
 .stratz-advice-mini.neu{background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border)}
+.stratz-sub-badge{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:1px 5px;border-radius:3px;color:var(--crit);background:rgba(208,135,112,.2)}
+.stratz-sub-badge.good{color:var(--good);background:rgba(143,188,143,.2)}
+.stratz-sub-badge.neutral{color:var(--muted);background:rgba(255,255,255,.08)}
+.stratz-sub-chips{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-items:center}
+.stratz-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:4px;background:rgba(208,135,112,.25);border:1px solid rgba(208,135,112,.4);font-size:10.5px;font-weight:700;color:var(--text);cursor:help;white-space:nowrap}
+.stratz-chip-img{width:15px;height:10px;border-radius:2px;object-fit:cover}
+.stratz-sub-text{font-size:10.5px;color:var(--muted);line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 
 /* Draft Math Clean Cards */
 .draft-math-row{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;transition:border-color .15s}
@@ -1098,9 +1112,11 @@ function renderAnalysis() {
     </div>
   </section>`;
 
-  // ---------- Ліва колонка: Командна аналітика ----------
+  // ---------- Верхня секція: Повнорозмірний драфт у стилі Stratz (на всю ширину) ----------
+  const draftHtml = secDraftAnalysis(m, rad, dire);
+
+  // ---------- Ліва колонка: Командна аналітика та аудит ----------
   let leftCol = '';
-  leftCol += secDraftAnalysis(m, rad, dire);
   leftCol += secInteractiveGraphs(m, rad, dire, p);
   leftCol += secMatchOutcome(m, rad, dire);
   leftCol += secFairPlayAudit(m, rad, dire);
@@ -1115,6 +1131,9 @@ function renderAnalysis() {
 
   $('#analysis').innerHTML = `
     ${bannerHtml}
+    <div class="dash-full-section" style="margin-bottom:20px">
+      ${draftHtml}
+    </div>
     <div class="dash-grid">
       <div class="dash-col-left">${leftCol}</div>
       <div class="dash-col-right">${rightCol}</div>
@@ -1376,7 +1395,7 @@ function calcHeroDraftAdvantage(h, team, enemies, p, role) {
   ]);
 
   // Безпечний підбір заміни СУВОРО за позицією гравця і без зайнятих героїв
-  const safeSuggest = (options) => {
+  const getSubstitutes = (options) => {
     const available = [];
     for (const opt of options) {
       if (!takenHeroIds.has(opt.id)) {
@@ -1384,8 +1403,12 @@ function calcHeroDraftAdvantage(h, team, enemies, p, role) {
         if (available.length >= 2) break;
       }
     }
-    if (!available.length) return '';
-    return available.map(opt => `${opt.name}${opt.reason ? ` (${opt.reason})` : ''}`).join(' або ');
+    return available;
+  };
+  const safeSuggest = (options) => {
+    const subs = getSubstitutes(options);
+    if (!subs.length) return '';
+    return subs.map(opt => `${opt.name}${opt.reason ? ` (${opt.reason})` : ''}`).join(' або ');
   };
 
   // Розрахунок Stratz-style матриці проти кожного з 5 ворогів
@@ -1404,28 +1427,36 @@ function calcHeroDraftAdvantage(h, team, enemies, p, role) {
   });
 
   // Героєспецифічні обґрунтування
+  let substitutes = [];
   if (h.id === 39) { // Queen of Pain
     if (badVs.length) {
+      substitutes = getSubstitutes(ROLE_SUBSTITUTES[2]);
       const sug = safeSuggest(ROLE_SUBSTITUTES[2]);
       if (sug) betterPick = `Для ${posLabel} (Mid) проти контролю ворога краще зіграти на ${sug}.`;
     }
   } else if (h.id === 42) { // Wraith King
     if (badVs.length) {
-      const sug = safeSuggest(ROLE_SUBSTITUTES[pos] || ROLE_SUBSTITUTES[1]);
+      const cands = ROLE_SUBSTITUTES[pos] || ROLE_SUBSTITUTES[1];
+      substitutes = getSubstitutes(cands);
+      const sug = safeSuggest(cands);
       if (sug) betterPick = `Для ${posLabel} проти активного темпу краще взяти ${sug}.`;
     } else {
       bestReason = 'Reincarnation гарантує надійність у бійках, а відсутність сильного манаберну дозволяє вільно ініціювати.';
     }
   } else if (h.id === 8) { // Juggernaut
     if (badVs.length) {
-      const sug = safeSuggest(ROLE_SUBSTITUTES[pos] || ROLE_SUBSTITUTES[1]);
+      const cands = ROLE_SUBSTITUTES[pos] || ROLE_SUBSTITUTES[1];
+      substitutes = getSubstitutes(cands);
+      const sug = safeSuggest(cands);
       if (sug) betterPick = `Для ${posLabel} проти контролю крізь BKB краще обрати ${sug}.`;
     } else {
       bestReason = 'Blade Fury дає ранній імунітет до магії, Omnislash стабільно реалізує розміни.';
     }
   } else if (h.id === 70) { // Ursa
     if (badVs.length) {
-      const sug = safeSuggest(ROLE_SUBSTITUTES[pos] || ROLE_SUBSTITUTES[1]);
+      const cands = ROLE_SUBSTITUTES[pos] || ROLE_SUBSTITUTES[1];
+      substitutes = getSubstitutes(cands);
+      const sug = safeSuggest(cands);
       if (sug) betterPick = `Для ${posLabel} проти кайту ворога краще взяти ${sug}.`;
     } else {
       bestReason = 'Fury Swipes вибухово забирає Рошана і дозволяє впевнено вигравати мілі-дуелі.';
@@ -1434,6 +1465,7 @@ function calcHeroDraftAdvantage(h, team, enemies, p, role) {
     // Якщо герой має відчутний мінус у драфті — пропонуємо заміну СУВОРО за його позицією
     if (counterScore <= -1.2) {
       const candidates = ROLE_SUBSTITUTES[pos] || ROLE_SUBSTITUTES[role?.core ? 1 : 4];
+      substitutes = getSubstitutes(candidates);
       const sug = safeSuggest(candidates);
       if (sug) {
         betterPick = `Для ${posLabel} (${roleName}) краще підійде ${sug}.`;
@@ -1454,6 +1486,7 @@ function calcHeroDraftAdvantage(h, team, enemies, p, role) {
     badVs: badVs,
     synergies: synergies,
     betterPick: betterPick,
+    substitutes: substitutes,
     bestReason: bestReason,
     note: note,
     pairwiseVsEnemies: pairwiseVsEnemies,
@@ -1554,11 +1587,16 @@ function secDraftAnalysis(m, rad, dire) {
 
   const renderStratzCard = item => {
     const scoreCls = item.score > 0 ? 'pos' : item.score < 0 ? 'neg' : '';
-    const cardCls = item.isBestPick ? 'best' : item.betterPick ? 'weak' : '';
+    const hasSubs = (item.substitutes && item.substitutes.length > 0) || Boolean(item.betterPick);
+    const cardCls = item.isBestPick ? 'best' : hasSubs ? 'weak' : '';
+    const subList = item.substitutes && item.substitutes.length
+      ? item.substitutes
+      : (item.betterPick ? [{ name: item.betterPick.replace(/.*краще (?:взяти|обрати|підійде|зіграти на) /i, '').split(' або ')[0] }] : []);
+
     return `
       <div class="stratz-hero-card ${cardCls}">
         <div class="stratz-hero-img-wrap">
-          <img src="${heroImg(item.hero.id)}" alt="${esc(item.hero.dname)}">
+          <img src="${heroImg(item.hero.id)}" alt="${esc(item.hero.dname)}" loading="lazy">
         </div>
         <div class="stratz-role-badge">${esc(item.posLabel)}</div>
         <div class="stratz-hero-name" title="${esc(item.hero.dname)}">${esc(item.hero.dname)}</div>
@@ -1566,24 +1604,37 @@ function secDraftAnalysis(m, rad, dire) {
 
         <div class="stratz-vs-matrix">
           ${item.pairwiseVsEnemies.map(pe => `
-            <div class="stratz-vs-row">
-              <img src="${heroImg(pe.hero.id)}" alt="${esc(pe.hero.dname)}" title="Проти ${esc(pe.hero.dname)}">
+            <div class="stratz-vs-row" title="Матчап проти ${esc(pe.hero.dname)}: ${pe.score >= 0 ? '+' : ''}${pe.score.toFixed(1)}%">
+              <div class="stratz-vs-left">
+                <img src="${heroImg(pe.hero.id)}" alt="${esc(pe.hero.dname)}">
+                <span class="stratz-vs-hname">${esc(pe.hero.dname)}</span>
+              </div>
               <span class="stratz-vs-val ${pe.score > 0 ? 'pos' : pe.score < 0 ? 'neg' : 'zero'}">${pe.score >= 0 ? '+' : ''}${pe.score.toFixed(1)}</span>
             </div>
           `).join('')}
         </div>
 
-        ${item.betterPick ? `
+        ${hasSubs ? `
           <div class="stratz-advice-mini neg">
-            <b>Заміна:</b> ${esc(item.betterPick.replace(/.*краще (?:взяти|обрати|підійде|зіграти на) /i, ''))}
+            <div class="stratz-sub-badge">Краща заміна</div>
+            <div class="stratz-sub-chips">
+              ${subList.map(s => `
+                <span class="stratz-chip" title="${esc(s.reason || 'Оптимальний вибір на цю позицію')}">
+                  ${s.id ? `<img src="${heroImg(s.id)}" alt="" class="stratz-chip-img">` : ''}
+                  <span>${esc(s.name)}</span>
+                </span>
+              `).join('')}
+            </div>
           </div>
         ` : item.isBestPick ? `
           <div class="stratz-advice-mini pos">
-            <b>Кращий пік:</b> ${esc(item.bestReason || 'Високий матч-ап')}
+            <div class="stratz-sub-badge good">★ Топ-пік</div>
+            <div class="stratz-sub-text" title="${esc(item.bestReason || 'Високий синергетичний потенціал')}">${esc(item.bestReason ? (item.bestReason.slice(0, 36) + (item.bestReason.length > 36 ? '...' : '')) : 'Сильний матчап')}</div>
           </div>
         ` : `
           <div class="stratz-advice-mini neu">
-            <b>Баланс:</b> стабільний пік
+            <div class="stratz-sub-badge neutral">Баланс</div>
+            <div class="stratz-sub-text">Стабільний пік</div>
           </div>
         `}
       </div>
