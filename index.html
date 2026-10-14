@@ -452,7 +452,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 
   <section class="card">
     <form class="search" id="searchForm" autocomplete="off" onsubmit="return false;">
-      <input id="q" value="116212675" placeholder="Account ID (Steam32), SteamID64 або Match ID" aria-label="ID гравця або матчу">
+      <input id="q" value="9044569588" placeholder="Account ID (Steam32), SteamID64 або Match ID" aria-label="ID гравця або матчу">
       <button class="btn btn-primary" type="submit">Проаналізувати</button>
     </form>
         <div class="hint-line">Розпізнається автоматично: Steam32 (напр. 116212675), SteamID64 (7656119…), номер матчу (10 цифр) або посилання з OpenDota/Dotabuff/Steam.</div>
@@ -510,14 +510,19 @@ const state = {
 const BASE_API = 'https://api.opendota.com/api';
 
 async function api(path, opts = {}) {
-  const url = path.startsWith('http') ? path : BASE_API + path;
+  let url = path.startsWith('http') ? path : BASE_API + path;
+  const apiKey = localStorage.getItem('opendota_api_key') || '';
+  if (apiKey && !url.includes('api_key=')) {
+    url += (url.includes('?') ? '&' : '?') + 'api_key=' + encodeURIComponent(apiKey);
+  }
   let lastErr = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const res = await fetch(url, opts);
       if (res.status === 429) {
-        setStatus('Ліміт запитів OpenDota, очікування 2 с…');
-        await sleep(2000);
+        const pause = (attempt + 1) * 2000;
+        setStatus(`Ліміт запитів OpenDota API (429), очікування ${(pause/1000).toFixed(1)} с…`);
+        await sleep(pause);
         continue;
       }
       if (!res.ok) throw new Error('HTTP ' + res.status + ' (' + res.statusText + ')');
@@ -532,19 +537,25 @@ async function api(path, opts = {}) {
 
 async function loadConstants() {
   if (state.constantsLoaded) return;
+  const TTL = 24 * 60 * 60 * 1000; // 24 години
   const get = async (k, ep) => {
     try {
-      const c = sessionStorage.getItem(k);
-      if (c) return JSON.parse(c);
+      const c = localStorage.getItem(k);
+      if (c) {
+        const parsed = JSON.parse(c);
+        if (parsed && parsed.ts && (Date.now() - parsed.ts < TTL) && parsed.data) {
+          return parsed.data;
+        }
+      }
     } catch {}
     const d = await api(ep);
-    try { sessionStorage.setItem(k, JSON.stringify(d)); } catch {}
+    try { localStorage.setItem(k, JSON.stringify({ ts: Date.now(), data: d })); } catch {}
     return d;
   };
   setStatus('Завантаження бази героїв і предметів…');
   const [hArr, iObj] = await Promise.all([
-    get('d2_h_stats', '/heroStats').catch(() => get('d2_heroes', '/constants/heroes')),
-    get('d2_items', '/constants/items')
+    get('d2_h_stats_v3', '/heroStats').catch(() => get('d2_heroes_v3', '/constants/heroes')),
+    get('d2_items_v3', '/constants/items')
   ]);
   const parseHeroWinrate = h => {
     const pubPicks = Array.from({length: 8}, (_, i) => h[`${i+1}_pick`] || 0).reduce((s, v) => s + v, 0);
@@ -626,17 +637,44 @@ function rankName(tier) {
 /* ======================= Розпізнавання ID ======================= */
 function parseInput(raw) {
   const s = String(raw || '').trim();
-  const mMatch = s.match(/(?:matches\/|match\/|^)(\d{10})(?:\D|$)/);
-  if (mMatch) return { type: 'match', id: mMatch[1] };
-  const mProf = s.match(/(?:players\/|profiles\/|^)(\d{17})(?:\D|$)/);
-  if (mProf) {
+  if (!s) return null;
+
+  // 1. Посилання на матч
+  const mUrl = s.match(/(?:matches|match)\/(\d+)/i);
+  if (mUrl) return { type: 'match', id: mUrl[1] };
+
+  // 2. Посилання на гравця
+  const pUrl = s.match(/(?:players|profiles|id)\/(\d+)/i);
+  if (pUrl) {
+    if (pUrl[1].length === 17) {
+      try {
+        const a32 = (BigInt(pUrl[1]) - BigInt('76561197960265728')).toString();
+        return { type: 'player', id: a32 };
+      } catch {}
+    }
+    return { type: 'player', id: pUrl[1] };
+  }
+
+  // 3. SteamID64 (17 цифр)
+  if (/^7656119\d{10}$/.test(s)) {
     try {
-      const a32 = (BigInt(mProf[1]) - BigInt('76561197960265728')).toString();
+      const a32 = (BigInt(s) - BigInt('76561197960265728')).toString();
       return { type: 'player', id: a32 };
     } catch {}
   }
-  const mAcc = s.match(/(?:players\/|id\/|^)(\d{5,10})(?:\D|$)/);
-  if (mAcc) return { type: 'player', id: mAcc[1] };
+
+  // 4. Числові ідентифікатори
+  // Сучасні Match ID у Dota 2 мають 10 цифр і починаються з 7, 8, 9 (напр. 9044569588)
+  // Нові Steam32 акаунти з 10 цифр починаються з 1 (напр. 1737356567, 1011832947)
+  if (/^[789]\d{9}$/.test(s)) {
+    return { type: 'match', id: s, fallbackType: 'player' };
+  }
+
+  // Старіші матчі (9 цифр) або стандартні Steam32 акаунти (до 10 цифр)
+  if (/^\d{5,10}$/.test(s)) {
+    return { type: 'player', id: s, fallbackType: 'match' };
+  }
+
   return null;
 }
 
@@ -645,18 +683,39 @@ async function run(inputVal) {
   $('#error').innerHTML = '';
   const parsed = parseInput(inputVal);
   if (!parsed) {
-    showError('Не вдалося розпізнати ID. Введи Steam32 (напр. 116212675), SteamID64 (7656119…) або 10-значний Match ID.');
+    showError('Не вдалося розпізнати ID. Введіть Steam32 Account ID, SteamID64 або Match ID.');
     return;
   }
   try {
     await loadConstants();
     if (parsed.type === 'match') {
-      state.account = null;
-      $('#playerBox').innerHTML = '';
-      $('#stripBox').innerHTML = '';
-      await openStandaloneMatch(parsed.id);
+      try {
+        state.account = null;
+        $('#playerBox').innerHTML = '';
+        $('#stripBox').innerHTML = '';
+        await openStandaloneMatch(parsed.id);
+        return;
+      } catch (err) {
+        if (parsed.fallbackType === 'player') {
+          await loadPlayer(parsed.id);
+          return;
+        }
+        throw err;
+      }
     } else {
-      await loadPlayer(parsed.id);
+      try {
+        await loadPlayer(parsed.id);
+        return;
+      } catch (err) {
+        if (parsed.fallbackType === 'match') {
+          state.account = null;
+          $('#playerBox').innerHTML = '';
+          $('#stripBox').innerHTML = '';
+          await openStandaloneMatch(parsed.id);
+          return;
+        }
+        throw err;
+      }
     }
   } catch (e) {
     showError(e.message || String(e));
@@ -1136,8 +1195,22 @@ function calcHeroDraftAdvantage(h, team, enemies) {
 
   const eShorts = enemies.map(e => hero(e.hero_id).short);
   const tShorts = team.filter(t => t.hero_id !== h.id).map(t => hero(t.hero_id).short);
-
   const hShort = h.short || '';
+  const takenShorts = new Set([hShort, ...tShorts, ...eShorts]);
+
+  // Безпечний вибір рекомендації заміни: ніколи не пропонувати самого героя або вже зайнятих героїв матчу
+  const safeSuggest = (options) => {
+    const available = [];
+    for (const opt of options) {
+      const s = typeof opt === 'string' ? opt : opt.short;
+      if (!takenShorts.has(s)) {
+        available.push(opt);
+        if (available.length >= 2) break;
+      }
+    }
+    if (!available.length) return '';
+    return available.map(opt => typeof opt === 'string' ? (hero(opt)?.dname || opt) : `${opt.name}${opt.reason ? ` (${opt.reason})` : ''}`).join(' або ');
+  };
 
   // 1. Lion
   if (hShort === 'lion') {
@@ -1158,9 +1231,18 @@ function calcHeroDraftAdvantage(h, team, enemies) {
       goodVs.push('Anti-Mage та Primal Beast (миттєвий Hex та Mana Drain збивають мобільність)');
     }
     if (badVs.length >= 2) {
-      betterPick = 'Проти Wraith King та PA набагато надійніше взяти Shadow Demon (Disruption ховає союзника під фокусом PA, Demonic Purge знімає BKB) або Ancient Apparition (Ice Blast повністю забороняє відродження та вампіризм WK).';
+      const sug = safeSuggest([
+        { name: 'Shadow Demon', short: 'shadow_demon', reason: 'Disruption ховає союзника під фокусом PA, Demonic Purge знімає BKB' },
+        { name: 'Ancient Apparition', short: 'ancient_apparition', reason: 'Ice Blast повністю забороняє відновлення HP та вампіризм WK' },
+        { name: 'Winter Wyvern', short: 'winter_wyvern', reason: 'Cold Embrace повністю блокує фізику' }
+      ]);
+      if (sug) betterPick = 'Проти Wraith King та PA набагато надійніше взяти ' + sug + '.';
     } else if (badVs.length) {
-      betterPick = 'Проти фізичного берсту ворога безпечніше взяти Winter Wyvern (Cold Embrace повністю блокує фізику) або Bane (Fiend\'s Grip крізь BKB).';
+      const sug = safeSuggest([
+        { name: 'Winter Wyvern', short: 'winter_wyvern', reason: 'Cold Embrace повністю блокує фізику' },
+        { name: 'Bane', short: 'bane', reason: "Fiend's Grip крізь BKB" }
+      ]);
+      if (sug) betterPick = 'Проти фізичного берсту ворога безпечніше взяти ' + sug + '.';
     }
   }
 
@@ -1179,7 +1261,7 @@ function calcHeroDraftAdvantage(h, team, enemies) {
       goodVs.push('PA (баші пробивають BKB, Charge розкриває огляд на Blur)');
     }
     if (tShorts.includes('disruptor')) {
-      synergies.append ? synergies.append('Disruptor (Glimpse)') : synergies.push('Disruptor (Glimpse підтягує ворога під зустрічний Charge)');
+      synergies.push('Disruptor (Glimpse підтягує ворога під зустрічний Charge)');
     }
     bestReason = 'Spirit Breaker тотально домінує над сквашовою лінією ворога (KotL, Techies, WD) — Charge дає огляд і збиває ключові касти крізь усю карту.';
   }
@@ -1208,7 +1290,11 @@ function calcHeroDraftAdvantage(h, team, enemies) {
       badVs.push('KotL (Blinding Light виштовхує з позиції та ламає кут для Skewer/RP)');
     }
     if (badVs.length) {
-      betterPick = 'Проти мобільного KotL та вибухового WK надійніше взяти Centaur Warrunner (Stampede дає масовий ескейп) або Tidehunter (Ravage гарантовано покриває велику зону).';
+      const sug = safeSuggest([
+        { name: 'Centaur Warrunner', short: 'centaur', reason: 'Stampede дає масовий ескейп' },
+        { name: 'Tidehunter', short: 'tidehunter', reason: 'Ravage гарантовано покриває велику зону' }
+      ]);
+      if (sug) betterPick = 'Проти мобільного KotL та вибухового WK надійніше взяти ' + sug + '.';
     }
   }
 
@@ -1230,20 +1316,25 @@ function calcHeroDraftAdvantage(h, team, enemies) {
 
   // 6. Wraith King
   else if (hShort === 'wraith_king') {
-    const hasManaBurn = eShorts.some(x => ['anti_mage', 'invoker', 'phantom_lancer', 'nyx_assassin'].includes(x));
+    const hasManaBurn = eShorts.some(x => ['anti_mage', 'invoker', 'phantom_lancer', 'nyx_assassin', 'lion'].includes(x));
     if (!hasManaBurn) {
       counterScore += 2.2;
       goodVs.push('Відсутність манаберну у ворогів (Reincarnation гарантовано дає 100% друге життя у кожній сутичці)');
+      bestReason = 'Відсутність у ворога випалювання мани робить Reincarnation практично гарантованим у кожному файті.';
     } else {
       counterScore -= 2.4;
       badVs.push('Манаберн у ворогів (Reincarnation вимикається без мани)');
-      betterPick = 'Проти випалювання мани краще зіграти на Ursa, Lifestealer або Troll Warlord.';
+      const sug = safeSuggest([
+        { name: 'Ursa', short: 'ursa', reason: 'Enrage ігнорує манаберн' },
+        { name: 'Lifestealer', short: 'lifestealer', reason: 'Rage дає повний імунітет' },
+        { name: 'Troll Warlord', short: 'troll_warlord', reason: 'Battle Trance рятує від смерті' }
+      ]);
+      if (sug) betterPick = 'Проти випалювання мани краще зіграти на ' + sug + '.';
     }
     if (eShorts.includes('spirit_breaker') || eShorts.includes('luna')) {
       counterScore -= 1.0;
       badVs.push('Spirit Breaker та Luna (високий темп ворога не дає розігнатися до Radiance)');
     }
-    bestReason = 'Відсутність у ворога випалювання мани (AM, Diffusal) робить Reincarnation практично гарантованим у кожному файті.';
   }
 
   // 7. Phantom Assassin
@@ -1257,7 +1348,12 @@ function calcHeroDraftAdvantage(h, team, enemies) {
       badVs.push('Spirit Breaker (баші пробивають BKB, Charge розкриває інвіз Blur)');
     }
     if (badVs.length) {
-      betterPick = 'Проти Spirit Breaker та магічного берсту Luna надійніше зіграти на Ursa (Enrage переживає баш) або Juggernaut (Blade Fury дає ранній імунітет до магії).';
+      const sug = safeSuggest([
+        { name: 'Ursa', short: 'ursa', reason: 'Enrage переживає баш' },
+        { name: 'Juggernaut', short: 'juggernaut', reason: 'Blade Fury дає ранній імунітет до магії' },
+        { name: 'Lifestealer', short: 'lifestealer', reason: 'Rage захищає від контролю' }
+      ]);
+      if (sug) betterPick = 'Проти Spirit Breaker та магічного берсту Luna надійніше зіграти на ' + sug + '.';
     }
   }
 
@@ -1271,7 +1367,12 @@ function calcHeroDraftAdvantage(h, team, enemies) {
       counterScore -= 1.4;
       badVs.push('Luna (швидкий мувспід та Eclipse вбивають під час касту Illuminate)');
     }
-    betterPick = 'Проти Spirit Breaker та Luna набагато ефективніше взяти Disruptor (Glimpse повертає Charge назад) або Winter Wyvern (Cold Embrace повністю захищає від фізичного урону PA/Luna).';
+    const sug = safeSuggest([
+      { name: 'Disruptor', short: 'disruptor', reason: 'Glimpse повертає Charge назад' },
+      { name: 'Winter Wyvern', short: 'winter_wyvern', reason: 'Cold Embrace повністю захищає від фізичного урону PA/Luna' },
+      { name: 'Shadow Demon', short: 'shadow_demon', reason: 'Disruption рятує від розгону' }
+    ]);
+    if (sug) betterPick = 'Проти Spirit Breaker та Luna набагато ефективніше взяти ' + sug + '.';
   }
 
   // 9. Techies
@@ -1280,7 +1381,11 @@ function calcHeroDraftAdvantage(h, team, enemies) {
       counterScore -= 2.2;
       badVs.push('Spirit Breaker (Charge збиває мінування та вбиває під час розгону)');
     }
-    betterPick = 'Проти мобільного Spirit Breaker та Luna краще взяти Jakiro (Dual Breath сповільнює біг, Ice Path зупиняє розгін) або Treant Protector (Living Armor сейвить союзників глобально).';
+    const sug = safeSuggest([
+      { name: 'Jakiro', short: 'jakiro', reason: 'Dual Breath сповільнює біг, Ice Path зупиняє розгін' },
+      { name: 'Treant Protector', short: 'treant_protector', reason: 'Living Armor сейвить союзників глобально' }
+    ]);
+    if (sug) betterPick = 'Проти мобільного Spirit Breaker та Luna краще взяти ' + sug + '.';
   }
 
   // 10. Witch Doctor
@@ -1289,7 +1394,11 @@ function calcHeroDraftAdvantage(h, team, enemies) {
       counterScore -= 2.0;
       badVs.push('Spirit Breaker (Charge та Nether Strike миттєво збивають каст Death Ward)');
     }
-    betterPick = 'Проти Spirit Breaker надійніше взяти Vengeful Spirit (Nether Swap збиває ворожий врив і рятує кора) або Bane (Fiend\'s Grip крізь BKB).';
+    const sug = safeSuggest([
+      { name: 'Vengeful Spirit', short: 'vengefulspirit', reason: 'Nether Swap збиває ворожий врив і рятує кора' },
+      { name: 'Bane', short: 'bane', reason: "Fiend's Grip крізь BKB" }
+    ]);
+    if (sug) betterPick = 'Проти Spirit Breaker надійніше взяти ' + sug + '.';
   }
 
   // 11. Legion Commander
@@ -1297,7 +1406,13 @@ function calcHeroDraftAdvantage(h, team, enemies) {
     if (eShorts.includes('anti_mage')) { counterScore += 2.2; goodVs.push('Anti-Mage (Duel блокує Blink, змушує виходити в Linken)'); }
     if (eShorts.includes('dazzle')) { counterScore -= 2.6; badVs.push('Dazzle (Shallow Grave повністю ламає Duel)'); }
     if (eShorts.includes('sven')) { counterScore -= 1.8; badVs.push("Sven (God's Strength перебиває LC в дуелі)"); }
-    if (badVs.length) betterPick = 'Проти Dazzle та Sven надійніше взяти Axe (Culling Blade вбиває крізь Grave) або Slardar (Corrosive Haze зрізає броню).';
+    if (badVs.length) {
+      const sug = safeSuggest([
+        { name: 'Axe', short: 'axe', reason: 'Culling Blade вбиває крізь Grave' },
+        { name: 'Slardar', short: 'slardar', reason: 'Corrosive Haze зрізає броню' }
+      ]);
+      if (sug) betterPick = 'Проти Dazzle та Sven надійніше взяти ' + sug + '.';
+    }
   }
 
   // 12. Sven
@@ -1309,7 +1424,12 @@ function calcHeroDraftAdvantage(h, team, enemies) {
     if (eShorts.includes('bane') || eShorts.includes('shadow_demon')) {
       counterScore -= 2.4;
       badVs.push('Bane / Shadow Demon (контроль крізь BKB та Disruption ховає ціль)');
-      betterPick = 'Проти Bane та Shadow Demon безпечніше взяти Ursa, Monkey King або Slark.';
+      const sug = safeSuggest([
+        { name: 'Ursa', short: 'ursa', reason: 'Enrage витримує фокус' },
+        { name: 'Monkey King', short: 'monkey_king', reason: 'Wukong Command зонує ворогів' },
+        { name: 'Slark', short: 'slark', reason: 'Shadow Dance захищає від таргетного контролю' }
+      ]);
+      if (sug) betterPick = 'Проти Bane та Shadow Demon безпечніше взяти ' + sug + '.';
     }
   }
 
@@ -1325,7 +1445,131 @@ function calcHeroDraftAdvantage(h, team, enemies) {
     if (eShorts.includes('bloodseeker')) {
       counterScore -= 3.8;
       badVs.push('Bloodseeker (Rupture та Thirst повністю блокують)');
-      betterPick = 'Проти Bloodseeker краще взяти Lifestealer (Rage дає імунітет) або Ursa.';
+      const sug = safeSuggest([
+        { name: 'Lifestealer', short: 'lifestealer', reason: 'Rage дає імунітет' },
+        { name: 'Ursa', short: 'ursa', reason: 'Enrage переживає фокус' },
+        { name: 'Juggernaut', short: 'juggernaut', reason: 'Blade Fury знімає дебафи' }
+      ]);
+      if (sug) betterPick = 'Проти Bloodseeker краще взяти ' + sug + '.';
+    }
+  }
+
+  // 15. Juggernaut
+  else if (hShort === 'juggernaut') {
+    const magicNukers = eShorts.filter(x => ['zeus', 'tinker', 'venomancer', 'lion', 'crystal_maiden', 'skywrath_mage', 'lina'].includes(x));
+    if (magicNukers.length >= 2) {
+      counterScore += 2.2;
+      goodVs.push('Магічні прокасти ворога (Blade Fury дає безкоштовний імунітет на ранніх фазах)');
+    }
+    const bkbPiercers = eShorts.filter(x => ['bane', 'axe', 'legion_commander', 'beastmaster', 'slardar', 'magnus', 'spirit_breaker', 'faceless_void'].includes(x));
+    if (bkbPiercers.length >= 2) {
+      counterScore -= 2.0;
+      badVs.push('Контроль крізь BKB (' + bkbPiercers.map(x => hero(x)?.dname || x).join(', ') + ') — збиває Blade Fury та Omnislash');
+      const sug = safeSuggest([
+        { name: 'Ursa', short: 'ursa', reason: 'Enrage зменшує урон під контролем на 80%' },
+        { name: 'Wraith King', short: 'wraith_king', reason: 'Reincarnation дозволяє пережити перший локдаун' },
+        { name: 'Lifestealer', short: 'lifestealer', reason: 'Rage + Feast дають живучість' },
+        { name: 'Phantom Assassin', short: 'phantom_assassin', reason: 'Blur дозволяє тримати позицію' }
+      ]);
+      if (sug) betterPick = 'Проти важкого контролю крізь BKB краще розглянути ' + sug + '.';
+    } else {
+      bestReason = 'Blade Fury нівелює магічний прокаст ворога, а Omnislash надійно стирає ключові цілі у командних сутичках.';
+    }
+  }
+
+  // 16. Ursa
+  else if (hShort === 'ursa') {
+    const meleeTanks = eShorts.filter(x => ['spirit_breaker', 'underlord', 'tidehunter', 'centaur', 'axe', 'slardar', 'pudge'].includes(x));
+    if (meleeTanks.length >= 2) {
+      counterScore += 2.4;
+      goodVs.push('Мілі-танки ворога (Fury Swipes вибухово розбиває жирні цілі за лічені секунди)');
+      bestReason = 'Fury Swipes та Enrage дозволяють легко забирати раннього Рошана і домінувати в мілі-дуелях.';
+    }
+    const kiters = eShorts.filter(x => ['phantom_lancer', 'naga_siren', 'drow_ranger', 'venomancer', 'viper', 'razor'].includes(x));
+    if (kiters.length >= 2) {
+      counterScore -= 2.2;
+      badVs.push('Кайт та ілюзії (' + kiters.map(x => hero(x)?.dname || x).join(', ') + ') — Ursa не може дістатися до цілей без безперервного сповільнення');
+      const sug = safeSuggest([
+        { name: 'Sven', short: 'sven', reason: 'Cleave стирає ілюзії та дає високий сплеш' },
+        { name: 'Luna', short: 'luna', reason: 'Moon Glaives розбивають сумонів та ілюзії' },
+        { name: 'Juggernaut', short: 'juggernaut', reason: 'Blade Fury знімає сповільнення' }
+      ]);
+      if (sug) betterPick = 'Проти важкого кайту та ілюзій надійніше взяти ' + sug + '.';
+    }
+  }
+
+  // 17. Queen of Pain
+  else if (hShort === 'queen_of_pain') {
+    const squishy = eShorts.filter(x => ['crystal_maiden', 'dazzle', 'rubick', 'shadow_shaman', 'keeper_of_the_light', 'sniper'].includes(x));
+    if (squishy.length >= 2) {
+      counterScore += 2.0;
+      goodVs.push('Сквашовий беклайн (Blink + Sonic Wave стирають позиційних саппортів за один прокаст)');
+    }
+    const hardLock = eShorts.filter(x => ['disruptor', 'silencer', 'doom', 'lion', 'spirit_breaker', 'bloodseeker', 'legion_commander'].includes(x));
+    if (hardLock.length >= 2) {
+      counterScore -= 2.4;
+      badVs.push('Миттєве мовчання та контроль (' + hardLock.map(x => hero(x)?.dname || x).join(', ') + ') — позбавляє мобільності Blink');
+      const sug = safeSuggest([
+        { name: 'Puck', short: 'puck', reason: 'Phase Shift ухиляється від направлених спелів' },
+        { name: 'Storm Spirit', short: 'storm_spirit', reason: 'Ball Lightning дає повну неуразливість під час польоту' },
+        { name: 'Ember Spirit', short: 'ember_spirit', reason: 'Sleight of Fist та Remnant для безпечного відступу' }
+      ]);
+      if (sug) betterPick = 'Проти миттєвого сайленсу та контролю краще зіграти на ' + sug + '.';
+    }
+  }
+
+  // 18. Nyx Assassin
+  else if (hShort === 'nyx_assassin') {
+    const intCasters = eShorts.filter(x => ['invoker', 'leshrac', 'tinker', 'storm_spirit', 'outworld_destroyer', 'queen_of_pain', 'zeus'].includes(x));
+    if (intCasters.length >= 1) {
+      counterScore += 2.8;
+      goodVs.push('High-INT кастери (' + intCasters.map(x => hero(x)?.dname || x).join(', ') + ') — Mind Flare завдає колосального відсоткового урону');
+      bestReason = 'Ідеальний контр-пік проти інтовиків ворога завдяки Spiked Carapace та Mind Flare.';
+    }
+    if (eShorts.includes('slardar') || eShorts.includes('bounty_hunter')) {
+      counterScore -= 1.8;
+      badVs.push('True Sight (Corrosive Haze / Track збивають інвіз Vendetta)');
+      const sug = safeSuggest([
+        { name: 'Clockwerk', short: 'rattletrap', reason: 'Hookshot та коги дають надійний врив без інвізу' },
+        { name: 'Spirit Breaker', short: 'spirit_breaker', reason: 'Charge не залежить від невидимості' }
+      ]);
+      if (sug) betterPick = 'Проти розкриття невидимості надійніше взяти ' + sug + '.';
+    }
+  }
+
+  // 19. Winter Wyvern
+  else if (hShort === 'winter_wyvern') {
+    const heavyPhys = eShorts.filter(x => ['phantom_assassin', 'sven', 'ursa', 'legion_commander', 'troll_warlord', 'juggernaut'].includes(x));
+    if (heavyPhys.length >= 1) {
+      counterScore += 2.6;
+      goodVs.push('Фізичні керрі ворога (Cold Embrace дає 100% захист від фізики, Winter Curse вбиває ворогів їхнім же кором)');
+      bestReason = 'Cold Embrace та Winter Curse повністю знешкоджують фізичний урон ворожого керрі.';
+    }
+    if (eShorts.includes('silencer') || eShorts.includes('puck')) {
+      counterScore -= 1.6;
+      badVs.push('Масове мовчання ворога збиває сейв-касти');
+      const sug = safeSuggest([
+        { name: 'Oracle', short: 'oracle', reason: 'False Promise та Fortune End знімають дебафи' },
+        { name: 'Dazzle', short: 'dazzle', reason: 'Shallow Grave працює на великій дистанції' }
+      ]);
+      if (sug) betterPick = 'Проти сайленсу безпечніше взяти ' + sug + '.';
+    }
+  }
+
+  // 20. Lina
+  else if (hShort === 'lina') {
+    if (eShorts.includes('spirit_breaker') || eShorts.includes('phantom_assassin') || eShorts.includes('spectre')) {
+      counterScore -= 2.2;
+      badVs.push('Агресивний врив на дистанцію (Lina не має вбудованого ескейпу від фокусу)');
+      const sug = safeSuggest([
+        { name: 'Puck', short: 'puck', reason: 'Phase Shift рятує від раптових гангів' },
+        { name: 'Queen of Pain', short: 'queen_of_pain', reason: 'Blink дає миттєвий розрив дистанції' },
+        { name: 'Storm Spirit', short: 'storm_spirit', reason: 'Ball Lightning дозволяє виходити з фокусу' }
+      ]);
+      if (sug) betterPick = 'Проти вривів у беклайн безпечніше обрати ' + sug + '.';
+    } else {
+      counterScore += 1.6;
+      goodVs.push('Висока дальність атаки та миттєвий магічний берст Laguna Blade');
     }
   }
 
@@ -1336,10 +1580,20 @@ function calcHeroDraftAdvantage(h, team, enemies) {
     
     // Якщо у ворога багато дизейблів
     const disablerCount = enemies.filter(e => (hero(e.hero_id).roles || []).includes('Disabler')).length;
-    if (disablerCount >= 3 && !roles.includes('Disabler')) {
+    const hasInnateImmunity = ['juggernaut', 'lifestealer'].includes(hShort);
+
+    if (disablerCount >= 3 && !roles.includes('Disabler') && !hasInnateImmunity) {
       counterScore -= 1.2;
       badVs.push('Важкий контроль ворога (3+ дизейблери)');
-      if (isCore && !betterPick) betterPick = 'Проти важкого контролю краще взяти Juggernaut (Blade Fury) або Lifestealer (Rage).';
+      if (isCore && !betterPick) {
+        const sug = safeSuggest([
+          { name: 'Juggernaut', short: 'juggernaut', reason: 'Blade Fury дає ранній імунітет до магії' },
+          { name: 'Lifestealer', short: 'lifestealer', reason: 'Rage захищає від контролю' },
+          { name: 'Ursa', short: 'ursa', reason: 'Enrage зменшує контроль' },
+          { name: 'Wraith King', short: 'wraith_king', reason: 'Reincarnation дозволяє пережити перший локдаун' }
+        ]);
+        if (sug) betterPick = 'Проти важкого контролю краще взяти ' + sug + '.';
+      }
     }
 
     if (!note) {
@@ -1348,7 +1602,7 @@ function calcHeroDraftAdvantage(h, team, enemies) {
   }
 
   const rawTotal = metaDelta + counterScore;
-  const isBest = !betterPick && (counterScore >= 1.5 || rawTotal >= 2.0);
+  const isBest = !betterPick && (counterScore >= 1.4 || rawTotal >= 1.8);
 
   return {
     rawScore: rawTotal,
@@ -1363,30 +1617,11 @@ function calcHeroDraftAdvantage(h, team, enemies) {
 }
 
 function calibrateDraftScores(rawItems, targetNet) {
-  const sumRaw = rawItems.reduce((s, x) => s + x.rawScore, 0);
-  if (Math.abs(sumRaw) < 0.01) {
-    const base = Number((targetNet / rawItems.length).toFixed(1));
-    const res = rawItems.map(item => ({ ...item, score: base }));
-    const curSum = res.reduce((s, x) => s + x.score, 0);
-    res[res.length - 1].score = Number((res[res.length - 1].score + (targetNet - curSum)).toFixed(1));
-    return res;
-  }
-
-  const scaled = rawItems.map(item => {
-    const sc = Number(((item.rawScore / sumRaw) * targetNet).toFixed(1));
-    return { ...item, score: sc };
-  });
-
-  const curSum = Number(scaled.reduce((s, x) => s + x.score, 0).toFixed(1));
-  const diff = Number((targetNet - curSum).toFixed(1));
-
-  // Додаємо різницю до найбільшого за модулем показника для точності суми
-  let maxIdx = 0;
-  for (let i = 1; i < scaled.length; i++) {
-    if (Math.abs(scaled[i].score) > Math.abs(scaled[maxIdx].score)) maxIdx = i;
-  }
-  scaled[maxIdx].score = Number((scaled[maxIdx].score + diff).toFixed(1));
-  return scaled;
+  // Відображаємо автентичний розрахований драфт-рейтінг кожного героя
+  return rawItems.map(item => ({
+    ...item,
+    score: Number(item.rawScore.toFixed(1))
+  }));
 }
 
 function secDraftAnalysis(m, rad, dire) {
@@ -2064,6 +2299,92 @@ function initGraphEvents(m, rad, dire, curPlayer) {
 }
 
 /* ======================= Аналіз Результату (Post-Mortem) та Таблиця Імпакту ======================= */
+function generateDynamicOutcomeFactors(m, rad, dire, winRad, mins, swingStart, swingEnd, swingGold, winTowers, loseTowers, topWin, topLose) {
+  const winTeam = winRad ? 'Radiant' : 'Dire';
+  const loseTeam = winRad ? 'Dire' : 'Radiant';
+  const winners = winRad ? rad : dire;
+  const losers = winRad ? dire : rad;
+  const winH = hero(topWin.hero_id), loseH = hero(topLose.hero_id);
+
+  const goldAdv = (m.radiant_gold_adv && m.radiant_gold_adv.length > 2) ? m.radiant_gold_adv : [];
+  const adv10 = goldAdv.length > 10 ? goldAdv[10] : 0;
+  const winnerAdv10 = winRad ? adv10 : -adv10;
+
+  const winTD = winners.reduce((s, p) => s + (p.tower_damage || 0), 0);
+  const loseTD = losers.reduce((s, p) => s + (p.tower_damage || 0), 0);
+
+  const winObs = winners.reduce((s, p) => s + (p.purchase_ward_observer || 0), 0);
+  const loseObs = losers.reduce((s, p) => s + (p.purchase_ward_observer || 0), 0);
+  const winSent = winners.reduce((s, p) => s + (p.purchase_ward_sentry || 0), 0);
+  const loseSent = losers.reduce((s, p) => s + (p.purchase_ward_sentry || 0), 0);
+
+  const topWinNW = topWin.net_worth || (topWin.gold_per_min * mins);
+  const topLoseNW = topLose.net_worth || (topLose.gold_per_min * mins);
+  const nwGap = topWinNW - topLoseNW;
+
+  const worstFeeder = [...losers].sort((a,b) => (b.deaths || 0) - (a.deaths || 0))[0];
+
+  const winFactors = [];
+  const loseFactors = [];
+
+  // Фактор 1: Лайнінг стадія (0:00 - 10:00)
+  if (winnerAdv10 >= 1800) {
+    winFactors.push(`<b>Домінування на лініях (0:00–10:00):</b> ${winTeam} виграли стадію лайнінгу з перевагою <b>+${nf(winnerAdv10)} золота на 10-й хв</b>, отримавши ранній темп і контроль над картою.`);
+    loseFactors.push(`<b>Програний старт гри (0:00–10:00):</b> відставання у <b>-${nf(winnerAdv10)} золота</b> на стадії лайнінгу позбавило саппортів ресурсів і змусило корів передчасно відійти в ліс.`);
+  } else if (winnerAdv10 <= -1800) {
+    winFactors.push(`<b>Потужний камбек після важких ліній:</b> програючи <b>-${nf(Math.abs(winnerAdv10))} золота</b> на 10-й хв, ${winTeam} якісно згрупувалися у мід-геймі і переламали хід гри.`);
+    loseFactors.push(`<b>Втрата ранньої переваги:</b> маючи відрив у <b>+${nf(Math.abs(winnerAdv10))} золота на 10-й хв</b>, ${loseTeam} не змогли вчасно зламати Т2-вежі і віддали ініціативу.`);
+  } else {
+    winFactors.push(`<b>Рівний лайнінг і якісний перехід у мідгейм:</b> після рівного старту (різниця < 1.8k на 10-й хв) ${winTeam} краще скоординували перші 5v5 сутички.`);
+    loseFactors.push(`<b>Невдалий перехід з ліній у мідгейм:</b> після рівного початку ${loseTeam} програли ключові перші спільні бійки за контроль території.`);
+  }
+
+  // Фактор 2: Переломний момент (Swing Window)
+  if (swingGold >= 2500) {
+    winFactors.push(`<b>Вирішальний розворот (${swingStart}:00–${swingEnd}:00):</b> виграна ключова битва із переломом у <b>+${nf(swingGold)} золота</b>, що відкрила шлях до Рошана та Т3-веж.`);
+    loseFactors.push(`<b>Критичний провал (${swingStart}:00–${swingEnd}:00):</b> втрата <b>${nf(swingGold)} золота переваги</b> за одне 3-хвилинне вікно зламала позицію ${loseTeam}.`);
+  } else {
+    winFactors.push(`<b>Системний тиск по всій карті:</b> ${winTeam} методично нарощували перевагу без ризикованих випадів.`);
+    loseFactors.push(`<b>Поступова втрата ініціативи:</b> ${loseTeam} віддавали нейтральні кемпи та руни без нав'язування файтів.`);
+  }
+
+  // Фактор 3: Об'єкти та вежі
+  if (winTowers >= 7 || winTD >= 12000) {
+    winFactors.push(`<b>Конвертація переваги в об'єкти:</b> знесено <b>${winTowers} веж</b> (${nf(winTD)} урону по будівлях), суперника затиснуто на хай-граунді.`);
+  } else {
+    winFactors.push(`<b>Вирішальний пуш трону:</b> швидке завершення гри через центральну лінію після виграного тімфайту.`);
+  }
+
+  if (loseTD < 4500 || loseTowers <= 2) {
+    loseFactors.push(`<b>Нульовий тиск на будівлі:</b> знесено лише <b>${loseTowers} веж</b> (${nf(loseTD)} TD), окремі фраги не реалізувалися у захоплення території.`);
+  } else {
+    loseFactors.push(`<b>Недостатній захист бази:</b> втрата ключових баражів без можливості провести повноцінний контратакувальний випад.`);
+  }
+
+  // Фактор 4: Керрі та віжен
+  if (nwGap >= 3500) {
+    winFactors.push(`<b>Економічне домінування кора (${esc(winH.dname)}):</b> відрив у <b>+${nf(nwGap)} нетворсу</b> над ${esc(loseH.dname)} (GPM ${topWin.gold_per_min} vs ${topLose.gold_per_min}).`);
+    loseFactors.push(`<b>Просідання керрі (${esc(loseH.dname)}):</b> відставання на <b>-${nf(nwGap)} нетворсу</b> не дозволило змагатися за урон у фінальних битвах.`);
+  }
+
+  if (winObs >= 10 && winObs >= loseObs * 1.3) {
+    winFactors.push(`<b>Тотальний огляд карти:</b> встановлено <b>${winObs} Observer</b> та <b>${winSent} Sentry</b> вардів (повний віжен-контроль ініціації).`);
+  }
+  if (loseObs <= 5 && mins >= 25) {
+    loseFactors.push(`<b>Критичний дефіцит віжену:</b> лише <b>${loseObs} Observer вардів</b> за ${Math.round(mins)} хв — пересування наосліп і регулярні засідки.`);
+  }
+
+  if (worstFeeder && (worstFeeder.deaths || 0) >= 9) {
+    const fHero = hero(worstFeeder.hero_id);
+    loseFactors.push(`<b>Систематичні відловлювання:</b> ${esc(fHero.dname)} загинув <b>${worstFeeder.deaths} разів</b>, створюючи супернику регулярну чисельну більшість 5v4.`);
+  }
+
+  return {
+    winReasons: winFactors.slice(0, 4),
+    loseReasons: loseFactors.slice(0, 4)
+  };
+}
+
 function secMatchOutcome(m, rad, dire) {
   const winRad = !!m.radiant_win;
   const winTeam = winRad ? 'Radiant' : 'Dire';
@@ -2183,17 +2504,9 @@ function secMatchOutcome(m, rad, dire) {
     `;
   };
 
-  const winReasons = [
-    `<b>Конвертація сутичок у взяття карти:</b> ${winTeam} системно зносили вежі після кожного виграного файту${winTowers ? ` (${winTowers} веж знесено за гру)` : ''}, повністю затиснувши суперника на базі.`,
-    `<b>Домінування керрі (${esc(winH.dname)}):</b> лідер за нетворсом завершив матч з <b>${nf(topWin.net_worth || topWin.gold || topWin.gold_per_min * mins)} золота</b> (GPM ${topWin.gold_per_min}), створивши непереборний відрив від ${esc(loseH.dname)}.`,
-    `<b>Дисципліна викупу та таймінгів:</b> збереження байбеків та своєчасні артефакти захисту дозволили ${winTeam} безпомилково зайти на хай-граунд.`
-  ];
-
-  const loseReasons = [
-    `<b>Вирішальний провал на ${swingStart}:00–${swingEnd}:00:</b> віддача <b>${nf(swingGold)} золота переваги</b> за одне вікно зламала контроль над картою для ${loseTeam}.`,
-    `<b>Просідання кора (${esc(loseH.dname)}):</b> відставання за золотом проти ворожого керрі не дало можливості нав'язати симетричний урон у фінальних битвах.`,
-    `<b>Низька конвертація окремих кілів:</b> ${loseTeam} не реалізували фраг-моменти у знесення веж (${loseTowers} веж за матч), що дозволило переможцям безпечно відновити темп.`
-  ];
+  const dynamicFactors = generateDynamicOutcomeFactors(m, rad, dire, winRad, mins, swingStart, swingEnd, swingGold, winTowers, loseTowers, topWin, topLose);
+  const winReasons = dynamicFactors.winReasons;
+  const loseReasons = dynamicFactors.loseReasons;
 
   return `<section class="card">
     <h2><span class="sec-tag">03</span>Розбір результату матчу (Post-Mortem)</h2>
@@ -2211,33 +2524,39 @@ function secMatchOutcome(m, rad, dire) {
       
       <div class="imp-grid">
         <div class="imp-col">
-          <div class="imp-col-head">
-            <span style="color:var(--good)">Команда Radiant</span>
-            <span class="muted">${winRad ? 'Переможці' : 'Поразка'}</span>
+          <div class="imp-col-head" style="color:var(--good)">
+            <span>Radiant ${winRad ? '🏆 Перемога' : 'Поразка'}</span>
+            <span class="muted">${scoreWin} кілів</span>
           </div>
-          ${radRated.map(renderImpCard).join('')}
+          ${radRated.sort((a,b) => b.score - a.score).map(renderImpCard).join('')}
         </div>
-
         <div class="imp-col">
-          <div class="imp-col-head">
-            <span style="color:var(--crit)">Команда Dire</span>
-            <span class="muted">${!winRad ? 'Переможці' : 'Поразка'}</span>
+          <div class="imp-col-head" style="color:var(--crit)">
+            <span>Dire ${!winRad ? '🏆 Перемога' : 'Поразка'}</span>
+            <span class="muted">${scoreLose} кілів</span>
           </div>
-          ${direRated.map(renderImpCard).join('')}
+          ${direRated.sort((a,b) => b.score - a.score).map(renderImpCard).join('')}
         </div>
       </div>
     </div>
 
-    <div class="outcome-grid" style="margin-top:20px">
-      <div class="outcome-col winner">
-        <h3 style="color:var(--good)">Фактори перемоги ${winTeam}</h3>
-        <ul class="outcome-list">
+    <div class="match-causes-grid" style="margin-top:20px">
+      <div class="cause-col win">
+        <div class="head" style="color:var(--good)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          Фактори перемоги (${winTeam})
+        </div>
+        <ul class="cause-list">
           ${winReasons.map(r => `<li>${r}</li>`).join('')}
         </ul>
       </div>
-      <div class="outcome-col loser">
-        <h3 style="color:var(--crit)">Критичні причини поразки ${loseTeam}</h3>
-        <ul class="outcome-list">
+
+      <div class="cause-col lose">
+        <div class="head" style="color:var(--crit)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+          Критичні причини поразки (${loseTeam})
+        </div>
+        <ul class="cause-list">
           ${loseReasons.map(r => `<li>${r}</li>`).join('')}
         </ul>
       </div>
@@ -2245,7 +2564,7 @@ function secMatchOutcome(m, rad, dire) {
   </section>`;
 }
 
-/* ======================= 04. Аудит чесної гри: руїнери, лівери та сторонній софт ======================= */
+/* ======================= 04. Аудит дисципліни матчу та спортивної чесності ======================= */
 function secFairPlayAudit(m, rad, dire) {
   const dur = m.duration || 0;
   const mins = Math.max(1, dur / 60);
@@ -2257,12 +2576,12 @@ function secFairPlayAudit(m, rad, dire) {
   const direDmg = Math.max(1, dire.reduce((s, p) => s + (p.hero_damage || 0), 0));
 
   const SCRIPT_HEROES = {
-    113: 'Arc Warden (авто-копія, інста-хекс/спарки, мікро-паки)',
-    34: 'Tinker (макро-спам, реарм, інста-блайнд)',
-    82: 'Meepo (пуф-скрипти на всіх клонів)',
-    101: 'Skywrath Mage (авто-атос, миттєвий ульт/сайленс)',
-    10: 'Morphling (авто-перекачка на 1 HP)',
-    1: 'Anti-Mage (авто-контрспелл на таргети)'
+    113: 'Arc Warden (мікроконтроль копії, Spark Wraith)',
+    34: 'Tinker (Rearm прокасти, Laser/Blink)',
+    82: 'Meepo (Poof синхронізація клонів)',
+    101: 'Skywrath Mage (миттєвий прокаст Rod of Atos + Mystic Flare)',
+    10: 'Morphling (динамічна перекачка Attribute Shift)',
+    1: 'Anti-Mage (реакція Counterspell на направлені здібності)'
   };
 
   const flagged = [];
@@ -2294,78 +2613,78 @@ function secFairPlayAudit(m, rad, dire) {
 
     const issues = [];
 
-    // 1. Abandon / AFK Leaver
+    // 1. Офіційний статус лівера / абандону за даними Valve
     if (leaver === 2) {
       issues.push({
         level: 'crit',
-        tag: 'Abandoned (Покинув гру)',
-        desc: 'Гравець навмисно від\'єднався і покинув матч, отримавши офіційний статус Abandoned.'
+        tag: 'Abandoned (Покинув матч)',
+        desc: 'Гравець навмисно від'єднався і покинув гру, отримавши офіційне технічне покарання Abandoned.'
       });
     } else if (leaver === 3) {
       issues.push({
         level: 'crit',
-        tag: 'AFK Abandon (Вигнано за простій)',
-        desc: 'Гравця покарано системою за тривалий простій без дій та отримання досвіду (AFK).'
+        tag: 'AFK Abandon (Вигнано за неактивність)',
+        desc: 'Гравця покарано автоматичною системою за тривалий простій без дій та досвіду (AFK).'
       });
     } else if (leaver === 1) {
       issues.push({
         level: 'warn',
         tag: 'Disconnected (Виліт перед фіналом)',
-        desc: 'Гравець був відсутній у грі на момент падіння Трону.'
+        desc: 'Гравець був відсутній у грі на момент руйнування Трону.'
       });
     }
 
-    // 2. Спеціалізовані скрипт-герої (Arc Warden, Tinker, Meepo тощо)
+    // 2. Атипова телеметрія на мікро-інтенсивних героях
     if (SCRIPT_HEROES[p.hero_id]) {
       const hDesc = SCRIPT_HEROES[p.hero_id];
       if (dmgShare >= 0.38 || kills >= 16 || (mins >= 25 && nw >= 22000)) {
         issues.push({
-          level: 'crit',
-          tag: `Підозра на софт / скрипти (${h.dname})`,
-          desc: `Аномальна домінація на скрипт-герої ${hDesc}: ${kills} вбивств, ${dmg.toLocaleString()} урону (${Math.round(dmgShare * 100)}% усієї команди) та ${nf(nw)} нетворсу. На цьому персонажі масово використовується софт для автоматизації мікроконтролю та миттєвих прокастів.`
+          level: 'warn',
+          tag: `Атипова телеметрія (${h.dname})`,
+          desc: `Виняткова індивідуальна результативність на герої зі складним мікроконтролем (${hDesc}): ${kills} вбивств, ${dmg.toLocaleString()} урону (${Math.round(dmgShare * 100)}% команди) та ${nf(nw)} нетворсу. Рекомендується перегляд реплею для оцінки мікроконтролю та швидкості реакції.`
         });
       }
     }
 
-    // 3. Свіжий твінк / Burner акаунт
+    // 3. Свіжий акаунт при високій результативності
     if (accId > 1200000000 && (kills >= 14 || dmgShare >= 0.35)) {
       issues.push({
-        level: 'warn',
-        tag: 'Свіжий твінк / Burner акаунт',
-        desc: `Steam32 Account ID (${accId}) вказує на свіжий акаунт, зареєстрований нещодавно (діапазон 2024–2026 рр.). Використання нових одноразових акаунтів є типовим для гри з софтом або бустингу, щоб уникнути блокування основного профілю.`
+        level: 'info',
+        tag: 'Новий акаунт Steam (Діапазон 2024–2026)',
+        desc: `Steam32 Account ID (${accId}) вказує на свіжий акаунт. При високих ігрових показниках (${kills} вбивств, ${Math.round(dmgShare * 100)}% урону) це типова ознака смурфінгу (досвідчений гравець у нижчому рейтинговому дивізіоні).`
       });
     }
 
-    // 4. Екстремальний смурфінг / бустинг
-    if (dmgShare >= 0.42 && kills >= 15) {
+    // 4. Екстремальний внесок в урон команди (смурфінг)
+    if (dmgShare >= 0.44 && kills >= 15) {
       issues.push({
         level: 'warn',
-        tag: 'Екстремальний смурфінг / бустинг',
-        desc: `Гравець самотужки наніс ${Math.round(dmgShare * 100)}% усього урону команди за матч. Така надмірна концентрація урону свідчить про гру не на своєму ранзі.`
+        tag: 'Екстремальний внесок в урон команди',
+        desc: `Гравець самотужки наніс ${Math.round(dmgShare * 100)}% усього урону команди за матч. Така надмірна концентрація свідчить про значну невідповідність рівня гри поточному лобі.`
       });
     }
 
-    // 5. Навмисний фід (Intentional Feeding)
+    // 5. Аномальна частота смертей (Feeding)
     if (deaths >= 13 && deathFreq <= 2.4 && dmgShare < 0.10 && kp < 0.20) {
       issues.push({
         level: 'crit',
-        tag: 'Навмисний фід (Feeding)',
-        desc: `Аномальні ${deaths} смертей (у середньому смерть кожні ${deathFreq.toFixed(1)} хв) при лише ${Math.round(dmgShare * 100)}% урону команди та ${Math.round(kp * 100)}% участі в бійках. Гравець цілеспрямовано біг під ворогів або вишки.`
+        tag: 'Аномальна частота смертей (Feeding)',
+        desc: `Зафіксовано ${deaths} смертей (у середньому загибель кожні ${deathFreq.toFixed(1)} хв) при лише ${Math.round(dmgShare * 100)}% урону команди та ${Math.round(kp * 100)}% участі у сутичках. Критична віддача ресурсів супернику.`
       });
     } else if (deaths >= 16) {
       issues.push({
         level: 'warn',
         tag: 'Критична кількість смертей',
-        desc: `${deaths} смертей за ${Math.round(mins)} хв — колосальна віддача золота та досвіду команді суперника.`
+        desc: `${deaths} смертей за ${Math.round(mins)} хв — значна втрата золота та досвіду для команди.`
       });
     }
 
-    // 6. Розбиття або продаж предметів (Item Griefing)
-    if (mins >= 25 && nw < 4500 && deaths >= 8) {
+    // 6. Підозра на продаж або втрату предметів
+    if (mins >= 25 && nw < 3500 && deaths >= 8) {
       issues.push({
-        level: 'crit',
-        tag: 'Розбиття / продаж предметів',
-        desc: `Нетворс героя склав лише ${nf(nw)} на ${Math.round(mins)}-й хвилині з фактично порожнім інвентарем — характерний патерн рейдж-продажу або розбиття артефактів.`
+        level: 'warn',
+        tag: 'Критично низький нетворс на пізній стадії',
+        desc: `Нетворс героя склав лише ${nf(nw)} на ${Math.round(mins)}-й хвилині. Характерно для продажу предметів перед падінням трону або тотального зриву фарму.`
       });
     }
 
@@ -2374,26 +2693,16 @@ function secFairPlayAudit(m, rad, dire) {
       issues.push({
         level: 'warn',
         tag: 'Пасивність / AFK (Низький APM)',
-        desc: `Показник APM становить лише ${apm} дій/хв (норма для активного гравця — 140–300 APM). Гравець тривалий час був неактивний у лісі або на фонтані.`
+        desc: `Показник темпу дій становить лише ${apm} дій/хв (норма для активного гравця — 140–300 APM). Можливий простій у лісі або на фонтані.`
       });
     }
 
-    // 8. Високий APM (Scripting / Auto-clicker)
+    // 8. Екстремальний темп дій (High APM)
     if (apm >= 480) {
       issues.push({
         level: 'warn',
-        tag: `Підозра на скрипти (APM ${apm})`,
-        desc: `Аномально високий темп (${apm} дій/хв, понад ${(apm/60).toFixed(1)} кліків щосекунди безперервно протягом усього матчу) — характерна ознака спам-макросів або прокаст-скриптів / автоклікерів.`
-      });
-    }
-
-    // 9. Низькоранговий смурф
-    const rank = p.rank_tier || 0;
-    if ((rank === 0 || rank <= 25) && kills >= 16 && deaths <= 3 && dmgShare >= 0.38 && mins >= 20) {
-      issues.push({
-        level: 'info',
-        tag: 'Підозра на смурфінг / бустинг',
-        desc: `Низький ранг (tier ${rank || 'Uncalibrated'}), але виняткова індивідуальна статистика (${kills}/${deaths}/${assists}) та ${Math.round(dmgShare * 100)}% усього урону команди.`
+        tag: `Екстремальний темп дій (APM ${apm})`,
+        desc: `Аномально високий темп (${apm} дій/хв, понад ${(apm/60).toFixed(1)} дій щосекунди безперервно). Зустрічається у гравців високого рангу або при використанні макросів чи автоклікерів. Перевірте реплей.`
       });
     }
 
@@ -2428,20 +2737,31 @@ function secFairPlayAudit(m, rad, dire) {
     `;
   }
 
+  // Дисклеймер щодо повноважень Overwatch та Valve
+  const disclaimerBox = `
+    <div style="background:rgba(94,129,172,.08);border:1px solid rgba(94,129,172,.25);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:12.5px;line-height:1.5;color:var(--text);display:flex;gap:12px;align-items:flex-start">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent);flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+      <div>
+        <b>Дисклеймер аудиту:</b> Наведений аналіз ґрунтується виключно на статистичній телеметрії реплею (темп кліків, атиповий урон, абандони, таймінги смертей). Офіційні рішення щодо блокування акаунтів (Game Ban / VAC Ban) ухвалюються виключно системою Valve Overwatch та античитом. Скористайтеся посиланнями на офіційні профілі Steam для верифікації актуального статусу.
+      </div>
+    </div>
+  `;
+
   let body = '';
   if (flagged.length === 0) {
     body = `
       ${unparsedBox}
+      ${disclaimerBox}
       <div class="fair-play-status clean">
         ${shieldSvg}
         <div>
-          <div class="fp-title" style="color:var(--good)">100% Чистий матч (Fair Play) — Руїнерів та саботажу не виявлено</div>
+          <div class="fp-title" style="color:var(--good)">Дисциплінований матч: аномалій телеметрії не виявлено</div>
           <div class="fp-sub">
-            Усі 10 гравців дограли зустріч до завершення (без лівів та AFK). Інтервали смертей, інвентарі та активність дій перебувають у межах нормальної змагальної гри Dota 2.
+            Усі 10 гравців дограли зустріч до кінця без абандонів. Інтервали смертей, активність дій та динаміка нетворсу перебувають у межах нормальної змагальної гри Dota 2.
           </div>
         </div>
       </div>
-      <div class="hero-detail-grid" style="grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px">
+      <div class="hero-detail-grid" style="grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;margin-top:14px">
         <div class="stat-box" style="padding:12px">
           <div class="stat-box-lbl">Лівери / Абандони</div>
           <div class="stat-box-val" style="color:var(--good);font-size:18px">0 гравців</div>
@@ -2467,12 +2787,13 @@ function secFairPlayAudit(m, rad, dire) {
   } else {
     body = `
       ${unparsedBox}
+      ${disclaimerBox}
       <div class="fair-play-status alert">
         ${warnSvg}
         <div>
-          <div class="fp-title" style="color:var(--crit)">Зафіксовано підозрілу активність або саботаж: ${flagged.length} ${flagged.length === 1 ? 'гравець' : 'гравці'}</div>
+          <div class="fp-title" style="color:var(--crit)">Зафіксовано статистичні аномалії телеметрії: ${flagged.length} ${flagged.length === 1 ? 'гравець' : 'гравці'}</div>
           <div class="fp-sub">
-            Алгоритм проаналізував телеметрію підключень (leaver_status), частоту смертей, аномалії скрипт-героїв, цілісність предметів та статус акаунтів.
+            Виявлено незвичні патерни телеметрії (технічний вихід із гри, атипова частка урону або незвична частота дій). Перегляньте картки нижче.
           </div>
         </div>
       </div>
@@ -2513,9 +2834,9 @@ function secFairPlayAudit(m, rad, dire) {
         `).join('')}
       </div>
 
-      <div style="margin-top:14px;background:rgba(208,135,112,.08);border:1px solid rgba(208,135,112,.25);border-radius:10px;padding:12px 16px;font-size:12.5px;line-height:1.5;color:var(--text)">
-        <div style="font-weight:750;color:var(--crit);margin-bottom:4px">Як розпізнати статус блокування гравця Valve у Steam:</div>
-        <div>Натисніть кнопку <b>«Перевірити блокування у Steam»</b>. Якщо акаунт було забанено за сторонній софт (патрулем Overwatch або Valve Anti-Cheat), у профілі Steam під ніком відображається червоний запис <b>«1 game ban on record»</b> або <b>«1 VAC ban on record»</b>. (Для гравця Kira на Arc Warden статус блокування вже зафіксовано у Steam).</div>
+      <div style="margin-top:14px;background:rgba(94,129,172,.08);border:1px solid rgba(94,129,172,.25);border-radius:10px;padding:12px 16px;font-size:12.5px;line-height:1.5;color:var(--text)">
+        <div style="font-weight:750;color:var(--accent);margin-bottom:4px">Як верифікувати статус блокування гравця у Steam:</div>
+        <div>Натисніть кнопку <b>«Перевірити блокування у Steam»</b>. Якщо акаунт було заблоковано античитом Valve або патрулем Overwatch, у публічному профілі Steam відображається позначка <b>«1 game ban on record»</b> або <b>«1 VAC ban on record»</b>.</div>
       </div>
     `;
   }
@@ -2523,8 +2844,8 @@ function secFairPlayAudit(m, rad, dire) {
   return `
   <section class="card" style="margin-top:20px">
     <div class="card-h">
-      <h2><span class="sec-tag">04</span>Аудит чесної гри: руїнери, лівери та сторонній софт</h2>
-      <span class="muted">Аналіз телеметрії на фід, абандон, скрипти, розбиття речей, аномальний APM та смурфінг</span>
+      <h2><span class="sec-tag">04</span>Аудит дисципліни матчу та спортивної чесності</h2>
+      <span class="muted">Об'єктивний аналіз телеметрії: абандони, тривалий AFK, патерни надмірних смертей, темп дій (APM) та досьє акаунтів</span>
     </div>
     ${body}
   </section>`;
@@ -2623,7 +2944,12 @@ function initReplayParseHandlers() {
       btn.textContent = 'Надсилаємо запит…';
 
       try {
-        await fetch(`https://api.opendota.com/api/request/${matchId}`, { method: 'POST' });
+        const lastReqKey = `parse_cooldown_${matchId}`;
+        const lastReq = sessionStorage.getItem(lastReqKey);
+        if (!lastReq || Date.now() - Number(lastReq) > 120000) {
+          sessionStorage.setItem(lastReqKey, Date.now());
+          await fetch(`https://api.opendota.com/api/request/${matchId}`, { method: 'POST' });
+        }
         let elapsed = 0;
         btn.textContent = `У черзі OpenDota (0:00)…`;
         btn.classList.remove('btn-primary');
