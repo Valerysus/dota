@@ -1347,6 +1347,104 @@ function filterMajorPurchases(purchaseLog, itemsConst = {}) {
     return itemCost >= 1000;
   });
 }
+
+function buildActionPlan(ctx, otherTasks = []) {
+  if (!ctx || !ctx.p) return [];
+  const { p, role = {}, detailedDeaths = [], bm = {}, soloDeaths = 0, mins = 30 } = ctx;
+  const candidates = [];
+  const addedTopics = new Set();
+
+  // (1) смерті з причиною "Вікно без BKB"
+  const hasBkbDeath = (detailedDeaths || []).some(dt => {
+    const t = dt.time;
+    if (t < 900) return false;
+    const itemsLog = p.purchase_log || [];
+    const itemsBefore = itemsLog.filter(x => x.time <= t).map(x => x.key);
+    return role.core && !itemsBefore.includes('black_king_bar');
+  });
+
+  if (hasBkbDeath) {
+    candidates.push({
+      priority: 1,
+      topic: 'bkb',
+      text: 'Купити <b>BKB до 24:00</b> та уникати масових бійок без захисного артефакту.'
+    });
+    addedTopics.add('bkb');
+  }
+
+  // (2) перцентиль шкоди по спорудах нижче 40
+  const tdPct = (bm?.tower_damage?.pct != null)
+    ? bm.tower_damage.pct * 100
+    : (p?.benchmarks?.tower_damage?.pct != null ? p.benchmarks.tower_damage.pct * 100 : null);
+  if (tdPct != null && tdPct < 40) {
+    candidates.push({
+      priority: 2,
+      topic: 'tower_damage',
+      text: `Підвищити шкоду по спорудах (поточний перцентиль: ${Math.round(tdPct)}%): фокусувати вежі після виграних сутичок.`
+    });
+    addedTopics.add('tower_damage');
+  }
+
+  // (3) одиночні смерті >= 2
+  const sDeaths = soloDeaths != null ? soloDeaths : 0;
+  if (sDeaths >= 2) {
+    candidates.push({
+      priority: 3,
+      topic: 'solo_deaths',
+      text: `Зменшити кількість одиночних смертей (було ${sDeaths}): тримати позицію разом із командою та уникати соло-виходів без віжену.`
+    });
+    addedTopics.add('solo_deaths');
+  }
+
+  // (4) варди
+  const wards = typeof getWardsData === 'function' ? getWardsData(p) : { obs: p.obs_placed || 0, sen: p.sen_placed || 0 };
+  const wardTaskFromOther = otherTasks.find(t => t.text && (t.text.includes('Observer') || t.text.includes('Ward') || t.text.includes('Sentry')));
+  const needsWards = (!role.core && (wards.obs < Math.max(3, Math.round(mins * 0.3)) || wards.sen < Math.max(4, Math.round(mins * 0.4)))) || wardTaskFromOther;
+  if (needsWards) {
+    candidates.push({
+      priority: 4,
+      topic: 'wards',
+      text: wardTaskFromOther ? wardTaskFromOther.text : "Контроль віжену: своєчасно купувати та розставляти Observer/Sentry варди на підходах до ключових об'єктів."
+    });
+    addedTopics.add('wards');
+  }
+
+  // Завдання LH@10 додається лише якщо lh_at_10 < target_lh
+  const targets = { 1: 60, 2: 55, 3: 40 };
+  const targetLh = targets[role.pos] || (role.core ? 50 : 20);
+  const lh10 = (p.lh_t && p.lh_t[10] != null)
+    ? p.lh_t[10]
+    : (p.benchmarks?.lhten?.raw != null ? p.benchmarks.lhten.raw : null);
+
+  if (role.core && lh10 != null && lh10 < targetLh) {
+    candidates.push({
+      priority: 5,
+      topic: 'lh10',
+      text: `До 10:00 — <b>${targetLh} LH</b> (було ${lh10}): тримати баланс кріпів біля своєї вежі та забирати стаки.`
+    });
+    addedTopics.add('lh10');
+  }
+
+  // Інші конкретні завдання з попередніх блоків (якщо є вільне місце до 3)
+  for (const ot of otherTasks) {
+    if (candidates.length >= 3) break;
+    if (!ot || !ot.text) continue;
+    const isDup = (addedTopics.has('bkb') && ot.text.includes('BKB')) ||
+                  (addedTopics.has('wards') && (ot.text.includes('Ward') || ot.text.includes('Observer'))) ||
+                  (addedTopics.has('lh10') && ot.text.includes('LH')) ||
+                  (addedTopics.has('tower_damage') && (ot.text.includes('веж') || ot.text.includes('споруд')));
+    if (!isDup) {
+      candidates.push({
+        priority: 6,
+        topic: 'other',
+        text: ot.text
+      });
+    }
+  }
+
+  candidates.sort((a, b) => a.priority - b.priority);
+  return candidates.slice(0, 3);
+}
 // @pure-end
 
 /* ======================= Stratz-style Impact Score (IMP) ======================= */
@@ -4035,37 +4133,24 @@ async function renderTrendFor(accountId, currentHeroName) {
 
 /* ======================= Фаза 5: План на гру ======================= */
 function renderPlan(ctx, tasks) {
-  const { role, m, p } = ctx;
-  const fallback = role.core
-    ? [[50, `До 10:00 — <b>${{ 1:60, 2:55, 3:40 }[role.pos] || 50} LH</b> і 8 denies; контроль хвилі через Defensive Aggro.`],
-       [45, `Після кожного виграного файту — <b>бити вежу або забирати Рошана протягом 40 с</b>.`],
-       [40, `<b>Не більше 5 смертей</b>: не заходити за річку без бачення 2+ ворогів на карті.`]]
-    : [[50, `Поставити <b>3 Observer Ward до 10:00</b> і ${Math.round(ctx.mins * 0.4)}+ за всю гру.`],
-       [45, `Зробити <b>4 стаки лісових кемпів до 15:00</b> для свого кора.`],
-       [40, `Купити <b>Glimmer Cape або Force Staff до 18:00</b>.`]];
-
-  fallback.forEach(([w, t]) => tasks.push({ w, text: t }));
-  const seen = new Set();
-  const top = tasks.sort((a, b) => b.w - a.w).filter(t => {
-    const k = t.text.slice(0, 40);
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  }).slice(0, 3);
+  const { m, p } = ctx;
+  const top = buildActionPlan(ctx, tasks);
 
   const key = `d2coach_plan_${m.match_id}_${p.player_slot}`;
   let saved = [];
   try { saved = JSON.parse(localStorage.getItem(key)) || []; } catch {}
 
+  const countTxt = top.length ? `${top.length} ${top.length === 1 ? 'ключове мікро-завдання' : (top.length < 5 ? 'ключові мікро-завдання' : 'ключових мікро-завдань')}` : 'Немає критичних зауважень';
+
   $('#planBox').innerHTML = `<section class="card plan">
     <h2><span class="sec-tag">09</span>План роботи над помилками на наступну гру</h2>
-    <p class="sub">3 ключові мікро-завдання за результатами цього матчу. Відмічай виконані пункти — стан зберігається автоматично.</p>
-    ${top.map((t, i) => `
+    <p class="sub">${countTxt} за результатами цього матчу. Відмічай виконані пункти — стан зберігається автоматично.</p>
+    ${top.length ? top.map((t, i) => `
       <label class="${saved[i] ? 'done' : ''}">
         <input type="checkbox" data-i="${i}" ${saved[i] ? 'checked' : ''}>
         <span class="plan-txt"><span class="num">${i + 1}.</span> ${t.text}</span>
       </label>
-    `).join('')}
+    `).join('') : '<p class="muted" style="font-size:13px;padding:8px 0">Усі ключові показники в нормі — гру відіграно дисципліновано.</p>'}
   </section>`;
 
   $('#planBox').querySelectorAll('input').forEach(inp => {
