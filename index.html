@@ -1122,6 +1122,25 @@ function detectInvisEnemies(enemies, heroFn, finalItemsFn, stateObj) {
   }).map(e => heroFn(e.hero_id));
 }
 
+function formatAccountAudit(wlData) {
+  if (!wlData || typeof wlData !== 'object') return null;
+  const wins = wlData.win || 0;
+  const losses = wlData.lose || 0;
+  const N = wins + losses;
+  if (N === 0) return null;
+  const wr = Math.round((wins / N) * 100);
+  let note = null;
+  if (N >= 30 && N < 400 && wr > 56) {
+    note = "Малий обсяг історії при високому вінрейті. Це не доказ, перевірте профіль.";
+  }
+  return {
+    games: N,
+    winrate: wr,
+    line: `Усього ігор: ${N} · Вінрейт: ${wr}%`,
+    note
+  };
+}
+
 const PERMS_5 = (() => {
   const out = [];
   const rec = (arr, rest) => {
@@ -1374,6 +1393,7 @@ function renderAnalysis() {
   initCopyReport(m, p, role, H, win);
   initReplayParseHandlers();
   initDossierHandlers();
+  initFairPlayAccountAudit();
 
   // Нижні секції: Тренд і План
   renderPlan(ctx, tasks);
@@ -2857,6 +2877,7 @@ function secFairPlayAudit(m, rad, dire) {
             <ul class="fp-issues-list">
               ${f.issues.map(iss => `<li class="${iss.level}"><b>${iss.tag}:</b> ${iss.desc}</li>`).join('')}
             </ul>
+            <div class="fp-acc-audit" id="fp-acc-audit-${f.p.account_id}" data-account="${f.p.account_id || 0}"></div>
             <div class="fp-actions">
               ${f.steam64 ? `
                 <a href="https://steamcommunity.com/profiles/${f.steam64}/" target="_blank" rel="noopener" class="fp-btn steam" title="Відкрити офіційний профіль у Steam для перевірки блокувань Valve">
@@ -2891,6 +2912,47 @@ function secFairPlayAudit(m, rad, dire) {
     </div>
     ${body}
   </section>`;
+}
+
+async function initFairPlayAccountAudit() {
+  const auditBoxes = Array.from(document.querySelectorAll('.fp-acc-audit'));
+  if (!auditBoxes.length) return;
+  const candidates = auditBoxes.filter(box => box.dataset.account && box.dataset.account !== '0').slice(0, 3);
+  for (const box of candidates) {
+    const accId = box.dataset.account;
+    const cacheKey = `d2coach_wl_${accId}`;
+    let wlData = null;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const item = JSON.parse(cached);
+        if (item && item.ts && (Date.now() - item.ts < 24 * 3600 * 1000) && item.data) {
+          wlData = item.data;
+        }
+      }
+    } catch {}
+
+    if (!wlData) {
+      try {
+        wlData = await api(`/players/${accId}/wl`);
+        if (wlData && typeof wlData === 'object') {
+          try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: wlData })); } catch {}
+        }
+      } catch {
+        wlData = null;
+      }
+    }
+
+    const formatted = formatAccountAudit(wlData);
+    if (formatted) {
+      box.innerHTML = `
+        <div class="fp-wl-row" style="margin-top:6px;margin-bottom:8px;font-size:12px;color:var(--text);background:var(--card);border:1px solid var(--border);border-radius:6px;padding:6px 10px">
+          <b>${esc(formatted.line)}</b>
+          ${formatted.note ? `<div class="fp-wl-note muted" style="margin-top:2px;font-size:12px">${esc(formatted.note)}</div>` : ''}
+        </div>
+      `;
+    }
+  }
 }
 
 /* ======================= Досьє акаунта та історія ніків ======================= */
