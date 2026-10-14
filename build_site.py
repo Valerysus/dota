@@ -1041,6 +1041,32 @@ function positionPools() {
 }
 
 // @pure-start
+const W_FINAL_RANK = 1.0;
+const W_EARLY_RANK = 3.0;
+const W_POOL = 4.0;
+const W_SAFELANE_POS1 = 6.0;
+
+const LANE_NAMES = {
+  1: 'Легка лінія',
+  2: 'Центр',
+  3: 'Складна лінія',
+  4: 'Ліс'
+};
+
+function resolveLane(p) {
+  if (!p) return 'Лінія невідома';
+  if (p.lane_role && LANE_NAMES[p.lane_role]) {
+    return LANE_NAMES[p.lane_role];
+  }
+  if (p.lane) {
+    const isRad = p.player_slot < 128;
+    if (p.lane === 2) return LANE_NAMES[2];
+    if ((isRad && p.lane === 1) || (!isRad && p.lane === 3)) return LANE_NAMES[1];
+    if ((isRad && p.lane === 3) || (!isRad && p.lane === 1)) return LANE_NAMES[3];
+  }
+  return 'Лінія невідома';
+}
+
 const PERMS_5 = (() => {
   const out = [];
   const rec = (arr, rest) => {
@@ -1060,20 +1086,34 @@ function assignTeamPositions(team, mins) {
   const pools = positionPools();
   const farm = x => (x.gold_per_min || 0) + ((x.last_hits || 0) / mins) * 30;
   const order = [...team].sort((a, b) => farm(b) - farm(a));
+
+  const hasEarlyData = team.some(x => (x.lh_t && x.lh_t[10] !== undefined) || (x.gold_t && x.gold_t[10] !== undefined));
+  let earlyOrder = [];
+  if (hasEarlyData) {
+    const earlyScore = x => ((x.lh_t?.[10] ?? 0) * 3) + ((x.gold_t?.[10] ?? 0) / 100);
+    earlyOrder = [...team].sort((a, b) => earlyScore(b) - earlyScore(a));
+  }
+
   const fit = (x, pos) => {
     let s = 0;
     const rank = order.indexOf(x);
-    s -= Math.abs(rank - (pos - 1)) * 2.2;
+    s -= Math.abs(rank - (pos - 1)) * W_FINAL_RANK;
+
+    if (hasEarlyData) {
+      const earlyRank = earlyOrder.indexOf(x);
+      s -= Math.abs(earlyRank - (pos - 1)) * W_EARLY_RANK;
+    }
+
     const lr = x.lane_role;
     if (lr === 2) s += pos === 2 ? 7 : -2;
-    else if (lr === 1) s += (pos === 1 || pos === 5) ? 4 : (pos === 2 ? -3 : -1);
+    else if (lr === 1) s += pos === 1 ? W_SAFELANE_POS1 : pos === 5 ? 1 : (pos === 2 ? -3 : -1);
     else if (lr === 3) s += (pos === 3 || pos === 4) ? 4 : (pos === 2 ? -3 : -1);
     else if (lr === 4) s += (pos === 1 || pos === 3) ? 1 : 0;
     if (x.is_roaming) s += pos === 4 ? 3 : 0;
     const w = getWardsData(x).total;
     if (w >= 10) s += pos === 5 ? 2.5 : pos === 4 ? 1.5 : -2;
     const roles = hero(x.hero_id).roles || [];
-    if ((pools[pos] || []).includes(x.hero_id)) s += 2.5;
+    if ((pools[pos] || []).includes(x.hero_id)) s += W_POOL;
     if (roles.includes('Support')) s += pos >= 4 ? 1.5 : -1;
     if (roles.includes('Carry')) s += pos <= 2 ? 1 : (pos >= 4 ? -1 : 0);
     return s;
@@ -1094,16 +1134,16 @@ function assignTeamPositions(team, mins) {
   _teamPosCache.set(key, res);
   return res;
 }
-// @pure-end
 
 function detectRole(p, team, mins) {
   const asg = assignTeamPositions(team, mins);
   const pos = asg.get(p.player_slot) || 3;
   const wards = getWardsData(p).total;
   const lhpm = (p.last_hits || 0) / mins;
-  const laneTxt = { 1: 'безпечна лінія', 2: 'центр', 3: 'складна лінія', 4: 'ліс' }[p.lane_role] || 'лінія невідома';
-  return { pos, label: POS_NAMES[pos], core: pos <= 3, lhpm, why: `${laneTxt}, GPM ${p.gold_per_min || 0}, ${lhpm.toFixed(1)} LH/хв, вардів: ${wards}` };
+  const laneTxt = resolveLane(p);
+  return { pos, label: POS_NAMES[pos], core: pos <= 3, lhpm, lane: laneTxt, why: `${POS_NAMES[pos]}, ${laneTxt} · GPM ${p.gold_per_min || 0}, ${lhpm.toFixed(1)} LH/хв, вардів: ${wards}` };
 }
+// @pure-end
 
 /* ======================= Stratz-style Impact Score (IMP) ======================= */
 function calcPlayerImpact(pl, team, enemies, m, role) {
@@ -3109,9 +3149,9 @@ function secLaning(ctx) {
 
   // Визначення типу лінії та ролей опонентів
   const isRad = p.player_slot < 128;
-  const isOfflane = (isRad && p.lane === 3) || (!isRad && p.lane === 1) || role.pos === 3 || role.pos === 4;
-  const isSafelane = (isRad && p.lane === 1) || (!isRad && p.lane === 3) || role.pos === 1 || role.pos === 5;
-  const laneName = isOfflane ? 'Складна лінія (Offlane)' : (isSafelane ? 'Легка лінія (Safelane)' : 'Мід-лейн (Центр)');
+  const laneName = resolveLane(p);
+  const isOfflane = (p.lane_role === 3) || (!p.lane_role && ((isRad && p.lane === 3) || (!isRad && p.lane === 1))) || role.pos === 3 || role.pos === 4;
+  const isSafelane = (p.lane_role === 1) || (!p.lane_role && ((isRad && p.lane === 1) || (!isRad && p.lane === 3))) || role.pos === 1 || role.pos === 5;
 
   // Пошук головного керрі супротивника на лінії
   const oppCore = [...opp].sort((a,b) => (b.lh_t?.[10] || b.last_hits || 0) - (a.lh_t?.[10] || a.last_hits || 0))[0];
