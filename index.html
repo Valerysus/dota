@@ -1294,6 +1294,43 @@ function detectRole(p, team, mins) {
   const laneTxt = resolveLane(p);
   return { pos, label: POS_NAMES[pos], core: pos <= 3, lhpm, lane: laneTxt, why: `${POS_NAMES[pos]}, ${laneTxt} · GPM ${p.gold_per_min || 0}, ${lhpm.toFixed(1)} LH/хв, вардів: ${wards}` };
 }
+
+const IMP_HI = 10;
+const IMP_LO = -10;
+
+function verdictFromImp({ imp, kda, soloDeaths }) {
+  const sDeaths = soloDeaths || 0;
+  if (imp <= IMP_LO || (sDeaths >= 3 && imp < 0)) {
+    return 'Критичне просідання';
+  }
+  if (imp >= IMP_HI) {
+    return 'Вирішальний внесок';
+  }
+  if (imp < 0) {
+    return 'Пасивна роль';
+  }
+  return 'Стабільний відіграш';
+}
+
+function filterMajorPurchases(purchaseLog, itemsConst = {}) {
+  if (!Array.isArray(purchaseLog)) return [];
+  const compFiltered = filterComponentItems(purchaseLog, itemsConst);
+  const CONSUMABLES = new Set([
+    'tango', 'flask', 'clarity', 'dust', 'ward_observer', 'ward_sentry',
+    'smoke_of_deceit', 'tpscroll', 'bottle', 'blood_grenade', 'faerie_fire',
+    'enchanted_mango', 'cheese', 'refresher_shard', 'aegis'
+  ]);
+  return compFiltered.filter(e => {
+    if (!e || !e.key || typeof e.key !== 'string') return false;
+    if (e.key.startsWith('recipe_')) return false;
+    if (CONSUMABLES.has(e.key)) return false;
+    const it = itemsConst?.[e.key] || (typeof state !== 'undefined' && state?.items?.[e.key]);
+    if (it && it.qual === 'consumable') return false;
+    if (it && it.tier != null) return false;
+    const itemCost = it?.cost != null ? it.cost : (typeof cost === 'function' ? cost(e.key) : 0);
+    return itemCost >= 1000;
+  });
+}
 // @pure-end
 
 /* ======================= Stratz-style Impact Score (IMP) ======================= */
@@ -1549,6 +1586,8 @@ function secHeroDetailCard(ctx) {
   const teamDmg = ctx.team.reduce((s, x) => s + (x.hero_damage || 0), 0);
   const dmgShare = teamDmg ? Math.round(((p.hero_damage || 0) / teamDmg) * 100) : 0;
   const imp = calcPlayerImpact(p, ctx.team, ctx.enemies, m, role);
+  const heroVerdict = verdictFromImp({ imp: imp.score, kda: p.kda, soloDeaths: ctx.soloDeaths });
+  const heroVerdictCls = heroVerdict === 'Вирішальний внесок' ? 'good' : (heroVerdict === 'Критичне просідання' ? 'crit' : (heroVerdict === 'Пасивна роль' ? 'warn' : ''));
   const wards = getWardsData(p);
 
   return `
@@ -1560,6 +1599,7 @@ function secHeroDetailCard(ctx) {
           <span>${esc(H.dname)}</span>
           <span class="res ${win ? 'win' : 'loss'}">${win ? 'ПЕРЕМОГА' : 'ПОРАЗКА'}</span>
           <span class="imp-tag ${imp.score >= 25 ? 'mvp' : imp.score >= 0 ? 'pos' : 'neg'}" style="margin-left:6px">IMP ${imp.score >= 0 ? '+' : ''}${imp.score}</span>
+          <span class="pill ${heroVerdictCls}" style="font-size:12px;margin-left:6px">${heroVerdict}</span>
         </h2>
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 0">
           <span class="pill">${role.label}</span>
@@ -1567,7 +1607,7 @@ function secHeroDetailCard(ctx) {
           ${p.personaname ? `<span class="pill">${esc(p.personaname)}</span>` : ''}
           <span class="pill">Рівень ${p.level || '—'}</span>
         </div>
-        <div class="hint-line" style="margin-top:4px">Роль: ${role.why}. Імпакт: <b>${imp.score >= 0 ? '+' : ''}${imp.score}</b> (${imp.score >= 20 ? 'вирішальний вплив' : imp.score >= 0 ? 'стабільний внесок' : 'просідання'}).</div>
+        <div class="hint-line" style="margin-top:4px">Роль: ${role.why}. Імпакт: <b>${imp.score >= 0 ? '+' : ''}${imp.score}</b> (${heroVerdict.toLowerCase()}).</div>
       </div>
     </div>
 
@@ -2675,6 +2715,10 @@ function secMatchOutcome(m, rad, dire) {
     const td = item.td, dmg = Math.round(item.dmgShare * 100), kp = Math.round(item.kp * 100);
     const nw = pl.net_worth || (pl.gold_per_min * mins);
     const obs = item.wards.obs;
+    const kda = pl.kda || ((kills + (pl.assists || 0)) / Math.max(1, deaths));
+    const itemSoloDeaths = (pl.deaths_log || []).filter(d => classifyDeath(d.time, pl.player_slot, m.players) === 'Одиночна смерть поза позицією команди').length;
+    const verdict = verdictFromImp({ imp: item.score, kda, soloDeaths: itemSoloDeaths });
+    const verdictCls = verdict === 'Вирішальний внесок' ? 'good' : (verdict === 'Критичне просідання' ? 'crit' : (verdict === 'Пасивна роль' ? 'warn' : ''));
 
     const parts = [];
     if (r.core) {
@@ -2706,9 +2750,10 @@ function secMatchOutcome(m, rad, dire) {
       <div class="imp-card">
         <img src="${heroImg(item.hero.id)}" alt="">
         <div class="imp-card-main">
-          <div class="imp-card-top">
+          <div class="imp-card-top" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <span class="imp-card-name">${esc(item.hero.dname)} <span class="muted" style="font-weight:400;font-size:12px">(${item.role.label.split('·')[0].trim()})</span></span>
             <span class="imp-tag ${badgeCls}">${badgeText}</span>
+            <span class="pill ${verdictCls}" style="font-size:11px;padding:1px 7px;font-weight:600;margin:0">${verdict}</span>
           </div>
           <div class="imp-card-stats">
             <span>KDA: <b>${item.pl.kills}/${item.pl.deaths}/${item.pl.assists}</b></span>
@@ -3515,6 +3560,27 @@ function secLaning(ctx) {
 function secItems(ctx) {
   const { p, role, parsed, turbo, enemies, mine, deathTimes, addTask } = ctx;
   let out = '';
+
+  const majorPurchases = filterMajorPurchases(p.purchase_log || [], state.items);
+  if (majorPurchases.length) {
+    const stripNodes = majorPurchases.map(e => `
+      <div class="purchase-strip-node" style="display:inline-flex;flex-direction:column;align-items:center;background:var(--card2);padding:6px 10px;border-radius:6px;border:1px solid var(--border);min-width:64px;flex-shrink:0">
+        ${itemIcon(e.key)}
+        <span style="font-size:12px;font-weight:700;margin-top:4px">${fmtT(e.time)}</span>
+        <span class="muted" style="font-size:11px;max-width:80px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(itemName(e.key))}</span>
+      </div>
+    `).join('<span class="muted" style="font-size:14px;flex-shrink:0">→</span>');
+
+    out += `
+      <div style="margin-bottom:16px">
+        <div class="muted" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Стрічка ключових покупок (від 1000 золота)</div>
+        <div class="purchase-strip-scroll" style="overflow-x:auto;padding-bottom:6px;display:flex;align-items:center;gap:8px">
+          ${stripNodes}
+        </div>
+      </div>
+    `;
+  }
+
   const log = filterComponentItems(p.purchase_log || [], state.items);
   const firstBuy = {};
   log.forEach(e => { if (firstBuy[e.key] == null) firstBuy[e.key] = e.time; });
