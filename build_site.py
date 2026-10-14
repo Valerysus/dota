@@ -950,7 +950,7 @@ function privateHint(accId) {
       <div class="bar1">Dota 2 → Налаштування</div>
       <div class="tabs"><span>Головні</span><span class="on">Розширені налаштування</span><span>Аудіо</span></div>
       <div class="row dim"><div class="chk off"></div> Активність друзів</div>
-      <div class="row"><div class="chk">✓</div><b>Expose Public Match Data</b><span class="arrow">← увімкни</span></div>
+      <div class="row"><div class="chk">OK</div><b>Expose Public Match Data</b><span class="arrow">← увімкни</span></div>
     </div>
     <h3>Або перевір роботу тренера на відкритих даних:</h3>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
@@ -1040,6 +1040,7 @@ function positionPools() {
   return pools;
 }
 
+// @pure-start
 const PERMS_5 = (() => {
   const out = [];
   const rec = (arr, rest) => {
@@ -1093,6 +1094,7 @@ function assignTeamPositions(team, mins) {
   _teamPosCache.set(key, res);
   return res;
 }
+// @pure-end
 
 function detectRole(p, team, mins) {
   const asg = assignTeamPositions(team, mins);
@@ -1689,7 +1691,7 @@ function secDraftAnalysis(m, rad, dire) {
           </div>
         ` : item.verdict === 'best' ? `
           <div class="stratz-advice-mini pos">
-            <div class="stratz-sub-badge good">${item.betterCount === 0 ? '★ Найкращий вибір' : '★ Топ-пік'}</div>
+            <div class="stratz-sub-badge good">${item.betterCount === 0 ? 'Найкращий вибір' : 'Топ-пік'}</div>
             <div class="stratz-sub-text" title="${esc(item.bestReason)}">${esc(item.bestReason)}</div>
           </div>
         ` : `
@@ -2468,14 +2470,14 @@ function secMatchOutcome(m, rad, dire) {
       <div class="imp-grid">
         <div class="imp-col">
           <div class="imp-col-head" style="color:var(--good)">
-            <span>Radiant ${winRad ? '🏆 Перемога' : 'Поразка'}</span>
+            <span>Radiant ${winRad ? 'Перемога' : 'Поразка'}</span>
             <span class="muted">${scoreWin} кілів</span>
           </div>
           ${radRated.sort((a,b) => b.score - a.score).map(renderImpCard).join('')}
         </div>
         <div class="imp-col">
           <div class="imp-col-head" style="color:var(--crit)">
-            <span>Dire ${!winRad ? '🏆 Перемога' : 'Поразка'}</span>
+            <span>Dire ${!winRad ? 'Перемога' : 'Поразка'}</span>
             <span class="muted">${scoreLose} кілів</span>
           </div>
           ${direRated.sort((a,b) => b.score - a.score).map(renderImpCard).join('')}
@@ -3730,3 +3732,10 @@ if m:
     finally:
         if os.path.exists(t_name):
             os.remove(t_name)
+
+# Auto-check forbidden symbols (Rule 1 & Rule 7)
+forbidden_match = re.findall(r'[\U0001F000-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF]', html_content)
+if forbidden_match:
+    print(f"FORBIDDEN SYMBOLS ERROR: Found {len(forbidden_match)} forbidden symbols from forbidden ranges: {[hex(ord(c)) for c in set(forbidden_match)]}")
+    sys.exit(1)
+print("No forbidden symbols found (Rule 1 OK)")
