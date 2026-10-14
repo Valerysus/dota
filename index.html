@@ -1093,6 +1093,35 @@ function filterComponentItems(purchaseLog, itemsConst = {}) {
   return log.filter((_, idx) => !excludedIndices.has(idx));
 }
 
+const INVIS_HEROES_FALLBACK = ['riki','clinkz','bounty_hunter','nyx_assassin','mirana','weaver','sand_king','invoker'];
+const INVIS_ITEMS = ['invis_sword', 'silver_edge', 'glimmer_cape', 'shadow_amulet'];
+
+function detectInvisEnemies(enemies, heroFn, finalItemsFn, stateObj) {
+  const hasHeroInvis = (h) => {
+    if (!h || !h.short) return false;
+    if (['templar_assassin','broodmother','lycan'].includes(h.short)) return false;
+    if (stateObj?.heroAbilities && stateObj?.abilities) {
+      const heroAbils = stateObj.heroAbilities['npc_dota_hero_' + h.short]?.abilities || [];
+      const match = heroAbils.some(aKey => {
+        const a = stateObj.abilities[aKey];
+        if (!a || !a.desc) return false;
+        const d = a.desc.toLowerCase();
+        return /invisib/i.test(d) && !/reveal|true sight|revealed/i.test(d);
+      });
+      if (match) return true;
+    }
+    return INVIS_HEROES_FALLBACK.includes(h.short);
+  };
+
+  return (enemies || []).filter(e => {
+    const h = heroFn(e.hero_id);
+    const heroInvis = hasHeroInvis(h);
+    const items = typeof finalItemsFn === 'function' ? finalItemsFn(e) : [];
+    const itemInvis = items.some(k => INVIS_ITEMS.includes(k));
+    return heroInvis || itemInvis;
+  }).map(e => heroFn(e.hero_id));
+}
+
 const PERMS_5 = (() => {
   const out = [];
   const rec = (arr, rest) => {
@@ -3319,13 +3348,6 @@ function secItems(ctx) {
       need: ['monkey_king_bar', 'bloodthorn', 'javelin'],
       rec: 'Monkey King Bar або Bloodthorn',
       task: 'Зібрати <b>Monkey King Bar</b> проти ворожого evasion'
-    },
-    {
-      why: 'Ворожа невидимість',
-      match: h => ['riki','clinkz','bounty_hunter','nyx_assassin','mirana','weaver','sand_king'].includes(h.short) || enemies.some(e => finalItems(e).some(k => ['invis_sword','silver_edge','glimmer_cape'].includes(k))),
-      need: ['dust', 'ward_sentry', 'gem'],
-      rec: 'Dust of Appearance у постійному інвентарі',
-      task: 'Завжди носити <b>Dust of Appearance</b> проти невидимих цілей'
     }
   ];
 
@@ -3339,6 +3361,36 @@ function secItems(ctx) {
       }
     }
   });
+
+  // Task A3: Контр-предмети проти невидимості
+  const invisFoes = detectInvisEnemies(enemies, hero, finalItems, state);
+  if (invisFoes.length > 0) {
+    const hasCounter = hasAny(mine, ['dust', 'ward_sentry', 'gem']);
+    if (!hasCounter) {
+      const has6Slots = ['item_0','item_1','item_2','item_3','item_4','item_5'].every(k => p[k] != null && p[k] > 0);
+      const isCoreSlotCap = (role.pos === 1 || role.pos === 2) && has6Slots;
+      if (isCoreSlotCap) {
+        const advText = "Координація з саппортами (Pos 4-5) щодо наявності Dust/Sentry у бійках та контроль позиції через здібності розвідки";
+        missingCounters.push({
+          why: 'Ворожа невидимість',
+          foes: invisFoes,
+          rec: advText,
+          task: advText
+        });
+        addTask(60, advText);
+      } else {
+        const recText = 'Dust of Appearance у постійному інвентарі';
+        const taskText = 'Завжди носити <b>Dust of Appearance</b> проти невидимих цілей';
+        missingCounters.push({
+          why: 'Ворожа невидимість',
+          foes: invisFoes,
+          rec: recText,
+          task: taskText
+        });
+        addTask(60, taskText);
+      }
+    }
+  }
 
   if (missingCounters.length) {
     out += `<h3>Контр-предмети проти піку ворогів</h3>`;
