@@ -19,6 +19,9 @@ html_content = r'''<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Dota 2 AI Coach — аналітичний розбір матчів (OpenDota Live)</title>
 <style>
 :root{
@@ -479,16 +482,17 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
   </div>
 
   <section class="card">
-    <form class="search" id="searchForm" autocomplete="off" onsubmit="return false;">
+    <form class="search" id="searchForm" autocomplete="off" onsubmit="if(window.run) window.run(document.getElementById('q').value); return false;">
       <input id="q" value="9044569588" placeholder="Account ID (Steam32), SteamID64 або Match ID" aria-label="ID гравця або матчу">
-      <button class="btn btn-primary" type="submit">Проаналізувати</button>
+      <button class="btn btn-primary" id="searchSubmitBtn" type="submit" onclick="if(window.run) window.run(document.getElementById('q').value);">Проаналізувати</button>
     </form>
-        <div class="hint-line">Розпізнається автоматично: Steam32 (напр. 116212675), SteamID64 (7656119…), номер матчу (10 цифр) або посилання з OpenDota/Dotabuff/Steam.</div>
+    <div class="hint-line">Розпізнається автоматично: Steam32 (напр. 94054712), SteamID64 (7656119…), номер матчу (10 цифр) або посилання з OpenDota/Dotabuff/Steam.</div>
     <div class="quick-presets" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:13px">
       <span class="muted">Швидкі розбори:</span>
-      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="9044569588">Матч 9044569588 (Bloodseeker, 43 хв)</button>
-      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="94054712">Topson (94054712 · 20 матчів)</button>
-      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="116212675">Dendi (116212675)</button>
+      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="9044569588">Матч 9044569588 (Bloodseeker)</button>
+      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="9043612326">Матч 9043612326</button>
+      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="9038892612">Матч 9038892612</button>
+      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="94054712">Topson (94054712)</button>
     </div>
   </section>
 
@@ -505,6 +509,13 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 <div id="floatingHeroDock" class="hero-dock" aria-label="Швидкий вибір героя"></div>
 
 <script>
+window.onerror = function(msg, url, line, col, error) {
+  console.error("Global JS Error:", msg, "line:", line, error);
+  const errBox = document.getElementById('error') || document.body;
+  if (errBox) {
+    errBox.innerHTML = '<div class="card err" style="margin:12px 0;padding:12px 16px;background:var(--crit-bg);border:1px solid var(--crit);border-radius:10px"><b>Помилка виконання JavaScript:</b> ' + (typeof msg === 'string' ? msg : 'Error') + ' (рядок ' + line + ')<br><small style="opacity:0.9">Якщо ви щойно оновили сайт, натисніть <b>Ctrl + F5</b> (або очистіть кеш), щоб скинути старий кеш браузера.</small></div>' + (errBox.innerHTML || '');
+  }
+};
 /* ======================= Допоміжні утиліти ======================= */
 const $ = s => document.querySelector(s);
 window.$ = $;
@@ -751,6 +762,7 @@ async function run(inputVal) {
     clearStatus();
   }
 }
+window.run = run;
 
 async function loadPlayer(accountId) {
   setStatus('Завантаження профілю гравця #' + accountId + '…');
