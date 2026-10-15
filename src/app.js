@@ -437,6 +437,15 @@ async function loadMatch(matchId, accountId) {
   setStatus('Завантаження статистики матчапів героїв (OpenDota)…');
   try { await loadHeroMatchups(m.players.map(x => x.hero_id)); } catch {}
 
+  // Фоновий прелоад бенчмарків усіх інших героїв матчу для миттєвого перемикання
+  if (m.players) {
+    m.players.forEach(p => {
+      if (p.hero_id && p.player_slot !== target?.player_slot) {
+        getHeroBenchmarks(p.hero_id).catch(() => {});
+      }
+    });
+  }
+
   saveRecentSearch({
     id: matchId,
     query: matchId,
@@ -451,10 +460,22 @@ async function selectHero(slot, preserveScroll = true) {
   const y = preserveScroll ? window.scrollY : null;
   state.slot = slot;
   const pl = state.match?.players.find(x => x.player_slot === slot);
-  if (pl) await getHeroBenchmarks(pl.hero_id);
+
+  // 1. Миттєвий перерендер UI (0мс затримки)
   renderAnalysis();
   if (y !== null) {
     window.scrollTo({ top: y, behavior: 'instant' });
+  }
+
+  // 2. Якщо бенчмарки для обраного героя ще не в кеші — підтягуємо у фоні
+  if (pl && (!state.heroBenchmarks || !state.heroBenchmarks[pl.hero_id])) {
+    try {
+      await getHeroBenchmarks(pl.hero_id);
+      if (state.slot === slot) {
+        renderAnalysis();
+        if (y !== null) window.scrollTo({ top: y, behavior: 'instant' });
+      }
+    } catch {}
   }
 }
 
@@ -1285,7 +1306,16 @@ function renderAnalysis() {
 
   // Обробники кліку на міні-світчер
   $('#analysis').querySelectorAll('.hero-mini-btn').forEach(b => {
-    b.addEventListener('click', () => selectHero(+b.dataset.slot, true));
+    b.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetSlot = +b.dataset.slot;
+      if (targetSlot === state.slot) {
+        const el = $('#heroDetailCard') || $('#analysis');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      selectHero(targetSlot, true);
+    });
   });
 
   // Оновлення та рендер плаваючого дока
@@ -1345,9 +1375,14 @@ function renderFloatingHeroDock(m, rad, dire, curPlayer) {
   dock.classList.add('active');
 
   dock.querySelectorAll('.dock-hero-btn').forEach(b => {
-    b.addEventListener('click', () => {
+    b.addEventListener('click', (e) => {
+      e.preventDefault();
       const targetSlot = +b.dataset.slot;
-      if (targetSlot === state.slot) return;
+      if (targetSlot === state.slot) {
+        const el = $('#heroDetailCard') || $('#analysis');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
       selectHero(targetSlot, true);
     });
   });
