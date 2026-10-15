@@ -1265,7 +1265,9 @@ function renderAnalysis() {
   rightCol += secBenchmarks(ctx);
   rightCol += secLaning(ctx);
   rightCol += secItems(ctx);
-  rightCol += secMacro(ctx);
+
+  // ---------- Секція макро-гри на всю ширину (Widescreen Section) ----------
+  const macroHtml = secMacro(ctx);
 
   $('#analysis').innerHTML = `
     ${bannerHtml}
@@ -1275,6 +1277,9 @@ function renderAnalysis() {
     <div class="dash-grid">
       <div class="dash-col-left">${leftCol}</div>
       <div class="dash-col-right">${rightCol}</div>
+    </div>
+    <div class="dash-full-section macro-full-wrap" style="margin-top:20px">
+      ${macroHtml}
     </div>
   `;
 
@@ -3670,7 +3675,7 @@ function secMacro(ctx) {
   const totalDeathLoss = goldGiven + missedFarmGold;
 
   if (role.core) {
-    out += `<div class="tiles">
+    out += `<div class="tiles macro-kpi-grid">
       ${tile('Вбивства / KDA', `${p.kills}/${d}/${p.assists} (${kdaVal})`, d >= 8 ? 'warn' : 'good')}
       ${tile('Золото / хв (GPM)', p.gold_per_min || 0, (p.gold_per_min || 0) >= (role.pos === 1 ? 650 : 550) ? 'good' : (p.gold_per_min || 0) < 450 ? 'crit' : 'warn')}
       ${tile('Участь у бійках', pc(kp) + '%', kp < 0.4 ? 'warn' : 'good')}
@@ -3679,7 +3684,7 @@ function secMacro(ctx) {
       ${tile('Час у таверні', `${deadMin} хв (${deadShare}%)`, deadShare > 20 ? 'crit' : deadShare > 10 ? 'warn' : 'good')}
     </div>`;
   } else {
-    out += `<div class="tiles">
+    out += `<div class="tiles macro-kpi-grid">
       ${tile('Вбивства / KDA', `${p.kills}/${d}/${p.assists} (${kdaVal})`, d >= 9 ? 'warn' : 'good')}
       ${tile('Участь у бійках', pc(kp) + '%', kp < 0.45 ? 'warn' : 'good')}
       ${tile('Золото / хв (GPM)', p.gold_per_min || 0, '')}
@@ -3772,12 +3777,15 @@ function secMacro(ctx) {
       warn: { cls: 'warn', text: 'ЗВЕРНИ УВАГУ' },
       info: { cls: '', text: 'ІНФОРМАЦІЯ' }
     };
-    out += `<div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:16px;margin:16px 0">
-      <div style="font-weight:750;font-size:14px;color:var(--text);margin-bottom:12px">Чекліст ключових макро-цілей: виконання та пропуски</div>
-      <div style="display:flex;flex-direction:column;gap:8px">
+    out += `<div class="macro-scorecard-box">
+      <div class="macro-scorecard-head">
+        <span class="pill good">Аудит цілей</span>
+        <span>Чекліст ключових макро-цілей: виконання та пропуски</span>
+      </div>
+      <div class="macro-scorecard-grid">
         ${scorecard.map(item => {
           const b = badgeMap[item.status] || badgeMap.info;
-          return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:8px;background:var(--card);border:1px solid var(--border)">
+          return `<div class="macro-scorecard-card">
             <span class="pill ${b.cls}" style="flex-shrink:0;margin-right:0">${b.text}</span>
             <div style="flex:1;min-width:0">
               <div style="font-weight:650;font-size:13px;color:var(--text);margin-bottom:2px">${esc(item.title)}</div>
@@ -3789,7 +3797,7 @@ function secMacro(ctx) {
     </div>`;
   }
 
-  return `<section class="card"><h2><span class="sec-tag">08</span>Фаза 3: Макро-гра та бойова дисципліна</h2>${out}</section>`;
+  return `<section class="card macro-full-card"><h2><span class="sec-tag">08</span>Фаза 3: Макро-гра та бойова дисципліна</h2>${out}</section>`;
 }
 
 /* ======================= Фаза 4: Тренд 15 ігор ======================= */
@@ -3836,7 +3844,7 @@ async function renderTrendFor(accountId, currentHeroName) {
   }
 
   box.innerHTML = `<section class="card">
-    <h2><span class="sec-tag">08</span>Тренд останніх ${rec.length} ігор</h2>
+    <h2><span class="sec-tag">10</span>Тренд останніх ${rec.length} ігор</h2>
     <p class="sub">${W.length}W – ${L.length}L · ${pc(W.length / rec.length)}% Вінрейт. Пошук системних звичок гравця.</p>
     <div class="tiles">
       ${tile('KDA у перемогах', kW.toFixed(2), 'good')}
@@ -3862,26 +3870,143 @@ function renderPlan(ctx, tasks) {
   let saved = [];
   try { saved = JSON.parse(localStorage.getItem(key)) || []; } catch {}
 
-  const countTxt = top.length ? `${top.length} ${top.length === 1 ? 'ключове мікро-завдання' : (top.length < 5 ? 'ключові мікро-завдання' : 'ключових мікро-завдань')}` : 'Немає критичних зауважень';
+  const total = top.length;
+  const doneCount = top.filter((_, i) => saved[i]).length;
+  const pct = total ? Math.round((doneCount / total) * 100) : 100;
 
-  $('#planBox').innerHTML = `<section class="card plan">
-    <h2><span class="sec-tag">09</span>План роботи над помилками на наступну гру</h2>
-    <p class="sub">${countTxt} за результатами цього матчу. Відмічай виконані пункти — стан зберігається автоматично.</p>
-    ${top.length ? top.map((t, i) => `
-      <label class="${saved[i] ? 'done' : ''}">
-        <input type="checkbox" data-i="${i}" ${saved[i] ? 'checked' : ''}>
-        <span class="plan-txt"><span class="num">${i + 1}.</span> ${t.text}</span>
-      </label>
-    `).join('') : '<p class="muted" style="font-size:13px;padding:8px 0">Усі ключові показники в нормі — гру відіграно дисципліновано.</p>'}
-  </section>`;
+  const countTxt = total
+    ? `${total} ${total === 1 ? 'ключове мікро-завдання' : (total < 5 ? 'ключові мікро-завдання' : 'ключових мікро-завдань')}`
+    : 'Критичних зауважень немає';
 
-  $('#planBox').querySelectorAll('input').forEach(inp => {
+  const topicLabels = {
+    bkb: 'Артефакти & Захист',
+    tower_damage: 'Макро & Пуш',
+    solo_deaths: 'Позиціонування',
+    lh10: 'Лейнінг & Фарм',
+    support_vision: 'Огляд & Вардинг',
+    support_deaths: 'Виживання',
+    pos_distance: 'Дистанція у бійках'
+  };
+
+  const getPriorityInfo = (idx) => {
+    if (idx === 0) return { cls: 'p-crit', label: 'Пріоритет #1 · Критично' };
+    if (idx === 1) return { cls: 'p-warn', label: 'Пріоритет #2 · Важливо' };
+    if (idx === 2) return { cls: 'p-accent', label: 'Пріоритет #3 · Дисципліна' };
+    return { cls: 'p-info', label: `Пріоритет #${idx + 1}` };
+  };
+
+  let cardsHtml = '';
+  if (total) {
+    cardsHtml = top.map((t, i) => {
+      const pr = getPriorityInfo(i);
+      const cat = topicLabels[t.topic] || 'Індивідуальна гра';
+      const isDone = !!saved[i];
+      return `
+        <label class="plan-card ${isDone ? 'done' : ''}" data-idx="${i}">
+          <input type="checkbox" data-i="${i}" ${isDone ? 'checked' : ''} class="plan-checkbox">
+          <div class="plan-custom-check" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="plan-card-body">
+            <div class="plan-card-meta">
+              <span class="plan-priority-badge ${pr.cls}">${pr.label}</span>
+              <span class="plan-category-pill">${cat}</span>
+            </div>
+            <span class="plan-txt">${t.text}</span>
+          </div>
+        </label>
+      `;
+    }).join('');
+  } else {
+    cardsHtml = `
+      <div class="plan-empty-state">
+        <div class="plan-empty-badge">Бездоганна гра</div>
+        <div class="plan-empty-title">Критичних помилок у цьому матчі не виявлено!</div>
+        <div class="plan-empty-desc">Усі ключові показники дисципліни, темпу фарму та позиціонування виконано без збоїв. Продовжуй закріплювати такий результат у наступних іграх.</div>
+      </div>
+    `;
+  }
+
+  $('#planBox').innerHTML = `
+    <section class="card plan-section">
+      <div class="plan-header">
+        <div>
+          <h2><span class="sec-tag">09</span>План роботи над помилками на наступну гру</h2>
+          <p class="sub">${countTxt} за результатами цього матчу. Відмічай виконані пункти — стан зберігається автоматично.</p>
+        </div>
+        <div class="plan-header-actions">
+          <button class="btn btn-sm" id="resetPlanBtn" type="button" ${!total ? 'style="display:none"' : ''}>Скинути позначки</button>
+        </div>
+      </div>
+
+      ${total ? `
+        <div class="plan-tracker">
+          <div class="plan-tracker-top">
+            <div class="plan-tracker-status">
+              <span class="plan-status-dot ${doneCount === total ? 'complete' : ''}"></span>
+              <span id="planStatusMsg">${doneCount === total ? 'Усі установки тренера закріплено!' : 'Прогрес відпрацювання помилок'}</span>
+            </div>
+            <div class="plan-counter">
+              <span id="planDoneCount">${doneCount}</span> / <span>${total}</span> виконано (<span id="planPctVal">${pct}%</span>)
+            </div>
+          </div>
+          <div class="plan-bar-track">
+            <div class="plan-bar-fill" id="planBarFill" style="width:${pct}%"></div>
+          </div>
+        </div>
+      ` : ''}
+
+      <div class="plan-cards-list">
+        ${cardsHtml}
+      </div>
+    </section>
+  `;
+
+  const updateProgress = () => {
+    const curDone = top.filter((_, i) => saved[i]).length;
+    const curPct = total ? Math.round((curDone / total) * 100) : 100;
+    const barEl = $('#planBarFill');
+    const doneEl = $('#planDoneCount');
+    const pctEl = $('#planPctVal');
+    const msgEl = $('#planStatusMsg');
+    const dotEl = $('#planBox .plan-status-dot');
+
+    if (barEl) barEl.style.width = `${curPct}%`;
+    if (doneEl) doneEl.textContent = String(curDone);
+    if (pctEl) pctEl.textContent = `${curPct}%`;
+    if (msgEl) {
+      msgEl.textContent = curDone === total
+        ? 'Усі установки тренера закріплено!'
+        : 'Прогрес відпрацювання помилок';
+    }
+    if (dotEl) {
+      dotEl.classList.toggle('complete', curDone === total);
+    }
+  };
+
+  $('#planBox').querySelectorAll('input[type="checkbox"]').forEach(inp => {
     inp.addEventListener('change', () => {
-      saved[+inp.dataset.i] = inp.checked;
-      inp.closest('label').classList.toggle('done', inp.checked);
+      const idx = +inp.dataset.i;
+      saved[idx] = inp.checked;
+      inp.closest('.plan-card').classList.toggle('done', inp.checked);
       try { localStorage.setItem(key, JSON.stringify(saved)); } catch {}
+      updateProgress();
     });
   });
+
+  const resetBtn = $('#resetPlanBtn');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      saved = [];
+      try { localStorage.removeItem(key); } catch {}
+      $('#planBox').querySelectorAll('.plan-card').forEach(c => {
+        c.classList.remove('done');
+        const inp = c.querySelector('input');
+        if (inp) inp.checked = false;
+      });
+      updateProgress();
+    });
+  }
 }
 
 /* ======================= Тема та ініціалізація ======================= */
