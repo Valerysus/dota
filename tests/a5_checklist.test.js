@@ -158,5 +158,28 @@ test('A5: task with <script> in hero name is safely escaped in action plan', () 
   assert.ok(plan2.length > 0);
   assert.ok(!plan2.some(t => t.text.includes('<script>')), 'Action plan must NOT contain unescaped <script>');
   assert.ok(plan2.some(t => t.text.includes('&lt;script&gt;')), 'Raw script in task must be escaped by buildActionPlan');
+
+  // Задача 21: Attribute injection and disallowed tags check
+  assert.strictEqual(typeof ctxPure.sanitizeTaskHtml, 'function', 'sanitizeTaskHtml should be exported');
+  assert.strictEqual(ctxPure.sanitizeTaskHtml('<b>ok</b>'), '<b>ok</b>', '<b>ok</b> must remain unchanged');
+  assert.strictEqual(
+    ctxPure.sanitizeTaskHtml('<b onmouseover=alert(1)>x</b>'),
+    '&lt;b onmouseover=alert(1)&gt;x</b>',
+    '<b onmouseover=...> must be escaped'
+  );
+  assert.strictEqual(
+    ctxPure.sanitizeTaskHtml('<span onclick=alert(1)>x</span>'),
+    '&lt;span onclick=alert(1)&gt;x&lt;/span&gt;',
+    '<span onclick=...> must be escaped'
+  );
+
+  const planAttr = ctxPure.buildActionPlan({ p: { player_slot: 0 } }, [
+    { w: 80, text: 'Купити <b onmouseover=alert(1)>BKB</b> та <span onclick=alert(1)>ward</span>' }
+  ]);
+  assert.ok(planAttr.length > 0);
+  assert.ok(!planAttr.some(t => t.text.includes('<b onmouseover=')), 'Action plan must NOT contain unescaped tag with onmouseover');
+  assert.ok(!planAttr.some(t => t.text.includes('<span onclick=')), 'Action plan must NOT contain unescaped span tag');
+  assert.ok(planAttr.some(t => t.text.includes('&lt;b onmouseover=alert(1)&gt;')));
+  assert.ok(planAttr.some(t => t.text.includes('&lt;span onclick=alert(1)&gt;')));
 });
 

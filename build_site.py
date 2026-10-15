@@ -44,11 +44,10 @@ with open(OUT_PATH, "w", encoding="utf-8") as f:
 print(f"Updated index.html successfully! Size: {len(html_content)} bytes")
 
 # Auto-check JS syntax via node --check
-node_cmd = shutil.which("node") or (
-    r"D:\programs\cursor\resources\app\resources\helpers\node.exe"
-    if os.path.exists(r"D:\programs\cursor\resources\app\resources\helpers\node.exe")
-    else "node"
-)
+node_cmd = shutil.which("node")
+if not node_cmd:
+    print("Встановіть Node.js для перевірки синтаксису та запуску тестів (node not found).")
+    sys.exit(1)
 
 m = re.search(r"<script>(.*)</script>", html_content, re.S)
 if m:

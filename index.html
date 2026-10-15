@@ -1095,6 +1095,9 @@ function positionPools() {
 }
 
 // @pure-start
+function sanitizeTaskHtml(s) {
+  return (s == null ? '' : String(s)).replace(/<(?!\/?(b|strong|i|em)>)[^>]*>/gi, m => esc(m));
+}
 const W_FINAL_RANK = 1.0;
 const W_EARLY_RANK = 3.0;
 const W_POOL = 4.0;
@@ -1498,13 +1501,10 @@ function buildActionPlan(ctx, otherTasks = []) {
                   (addedTopics.has('lh10') && ot.text.includes('LH')) ||
                   (addedTopics.has('tower_damage') && (ot.text.includes('веж') || ot.text.includes('споруд')));
     if (!isDup) {
-      const safeText = String(ot.text)
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, m => esc(m))
-        .replace(/<(?!\/?(b|strong|i|em|span)\b)[^>]*>/gi, m => esc(m));
       candidates.push({
         priority: 6,
         topic: 'other',
-        text: safeText
+        text: sanitizeTaskHtml(ot.text)
       });
     }
   }
@@ -1788,10 +1788,7 @@ function renderAnalysis() {
   const tasks = [];
   const addTask = (w, text) => {
     if (text == null) return;
-    const safeText = String(text)
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, m => esc(m))
-      .replace(/<(?!\/?(b|strong|i|em|span)\b)[^>]*>/gi, m => esc(m));
-    tasks.push({ w, text: safeText });
+    tasks.push({ w, text: sanitizeTaskHtml(text) });
   };
   const ctx = { m, p, dur, mins, win, team, enemies, rad, dire, parsed, turbo, bm, role, H, mine, deathTimes, detailedDeaths, soloDeaths, addTask };
 
