@@ -1429,6 +1429,196 @@ function buildActionPlan(ctx, otherTasks = []) {
   candidates.sort((a, b) => a.priority - b.priority);
   return candidates.slice(0, 3);
 }
+
+function buildMacroScorecard(p, m, role) {
+  if (!p) return [];
+  const mObj = m || {};
+  const isRadiant = p.isRadiant != null ? p.isRadiant : (p.player_slot < 128);
+  const myTeam = isRadiant ? 2 : 3;
+  const enemyTeam = isRadiant ? 3 : 2;
+  const dur = mObj.duration || 2400;
+  const mins = dur / 60;
+  const pos = role?.pos || (role?.core ? 1 : 5);
+  const isCore = role ? role.core : (pos <= 3);
+
+  const teamKills = (p.team_kills != null)
+    ? p.team_kills
+    : (mObj.players ? mObj.players.filter(x => (x.player_slot < 128) === isRadiant).reduce((s, x) => s + (x.kills || 0), 0) : ((p.kills || 0) + (p.assists || 0)));
+  const kp = teamKills > 0 ? ((p.kills || 0) + (p.assists || 0)) / teamKills : 0;
+  const kpPct = Math.round(kp * 100);
+
+  const deaths = p.deaths || 0;
+  const deadTimeSec = Math.round(deaths * Math.min(100, 10 + mins * 1.5));
+  const deadShare = Math.round((deadTimeSec / Math.max(1, dur)) * 100);
+  const deadMin = (deadTimeSec / 60).toFixed(1);
+
+  const towerDmg = p.tower_damage || 0;
+  const towersKilled = p.towers_killed || p.tower_kills || 0;
+  const gpm = p.gold_per_min || 0;
+
+  const objectives = mObj.objectives || [];
+  const roshans = objectives.filter(o => o.type === 'CHAT_MESSAGE_ROSHAN_KILL');
+  const myRosh = roshans.filter(o => o.team === myTeam).length;
+  const enemyRosh = roshans.filter(o => o.team === enemyTeam).length;
+  const myAegis = objectives.filter(o => o.type === 'CHAT_MESSAGE_AEGIS' && o.player_slot === p.player_slot).length;
+  const pRoshKills = p.roshans_killed || p.roshan_kills || 0;
+
+  const miniboss = objectives.filter(o => o.type === 'CHAT_MESSAGE_MINIBOSS_KILL');
+  const myMiniboss = miniboss.filter(o => o.team === myTeam).length;
+  const enemyMiniboss = miniboss.filter(o => o.team === enemyTeam).length;
+
+  const runesTotal = p.rune_pickups || (p.runes ? Object.values(p.runes).reduce((s, v) => s + (Number(v) || 0), 0) : 0);
+
+  const items = [];
+
+  // 1. Рошан та Егіда (після 20:00 або якщо були вбивства Рошана)
+  if (dur >= 1200 || roshans.length > 0) {
+    if (myRosh > 0 || myAegis > 0 || pRoshKills > 0) {
+      items.push({
+        status: 'done',
+        title: 'Контроль Рошана та Егіди',
+        text: 'Команда забрала Рошана ' + (myRosh > 1 ? (myRosh + ' рази') : '1 раз') + (myAegis > 0 ? ' (ти особисто підібрав Aegis of the Immortal)' : '') + '. Отримано вирішальну перевагу для штурму позицій.'
+      });
+    } else if (enemyRosh > 0) {
+      items.push({
+        status: 'failed',
+        title: 'Втрата контролю Рошана',
+        text: 'Суперник забрав Рошана (' + (enemyRosh > 1 ? (enemyRosh + ' рази') : '1 раз') + '). Відсутність віжену біля Рошпіту дозволила ворогам отримати безкоштовну Егіду.'
+      });
+    } else {
+      items.push({
+        status: 'warn',
+        title: 'Ігнорування Рошана',
+        text: 'За ' + Math.floor(mins) + ' хв жодна команда не забрала Рошана. Егіда суттєво спрощує безпечний штурм височини.'
+      });
+    }
+  }
+
+  // 2. Терзатель (Aghanimʼs Shard)
+  if (dur >= 1200 || miniboss.length > 0) {
+    if (myMiniboss > 0) {
+      items.push({
+        status: 'done',
+        title: 'Терзатель (Aghanimʼs Shard)',
+        text: 'Команда своєчасно вбила Терзателя після 20:00, отримавши безкоштовний Shard вартістю 1400 золота.'
+      });
+    } else if (enemyMiniboss > 0) {
+      items.push({
+        status: 'failed',
+        title: 'Терзатель відданий ворогам',
+        text: 'Суперник забрав Терзателя, а ваша команда пропустила таймінг 20:00+, втративши 1400 золота командного нетворсу.'
+      });
+    } else {
+      items.push({
+        status: 'warn',
+        title: 'Терзатель пропущений на 20:00+',
+        text: 'Після 20-ї хвилини команда не забрала Терзателя. Це пропуск безкоштовного Shard вартістю 1400 золота.'
+      });
+    }
+  }
+
+  // 3. Пуш споруд
+  if (isCore) {
+    if (towerDmg >= 2000 || towersKilled >= 1) {
+      items.push({
+        status: 'done',
+        title: 'Штурм споруд (' + towerDmg.toLocaleString('uk-UA') + ' шкоди)',
+        text: 'Нанесено ' + towerDmg.toLocaleString('uk-UA') + ' шкоди по спорудах' + (towersKilled > 0 ? (', зруйновано ' + towersKilled + ' веж') : '') + '. Відмінна конвертація виграних боїв у знесення бази.'
+      });
+    } else {
+      items.push({
+        status: 'failed',
+        title: 'Пасивність при пуші споруд',
+        text: 'Лише ' + towerDmg.toLocaleString('uk-UA') + ' шкоди по спорудах. Як кор, після виграних сутичок треба ламати вежі, а не повертатися у ліс.'
+      });
+    }
+  } else {
+    if (towerDmg >= 600 || towersKilled >= 1) {
+      items.push({
+        status: 'done',
+        title: 'Допомога у штурмі споруд',
+        text: 'Нанесено ' + towerDmg.toLocaleString('uk-UA') + ' шкоди по спорудах — активна участь в облозі.'
+      });
+    } else {
+      items.push({
+        status: 'info',
+        title: 'Позиціонування при пуші (саппорт)',
+        text: 'Нанесено ' + towerDmg.toLocaleString('uk-UA') + ' шкоди по спорудах. Головне завдання саппорта — забезпечити віжен та контрініціацію при облозі.'
+      });
+    }
+  }
+
+  // 4. Темп фарму
+  const targetGpm = pos === 1 ? 650 : pos === 2 ? 600 : pos === 3 ? 500 : pos === 4 ? 360 : 300;
+  if (gpm >= targetGpm) {
+    items.push({
+      status: 'done',
+      title: 'Темп фарму (' + gpm + ' GPM)',
+      text: 'Цільовий темп для Pos ' + pos + ' досягнуто (норма ≥ ' + targetGpm + ' GPM). Забезпечено стабільний таймінг ключових предметів.'
+    });
+  } else {
+    items.push({
+      status: 'failed',
+      title: 'Відставання за темпом фарму (' + gpm + ' GPM)',
+      text: 'Темп фарму нижче норми для Pos ' + pos + ' (норма ≥ ' + targetGpm + ' GPM, дефіцит: ' + (targetGpm - gpm) + ' GPM). Простій між пачками або неефективні маршрути.'
+    });
+  }
+
+  // 5. Бойова присутність
+  const targetKp = isCore ? 45 : 55;
+  if (kpPct >= targetKp || (p.kills || 0) >= 8) {
+    items.push({
+      status: 'done',
+      title: 'Бойова присутність (' + (p.kills || 0) + '/' + deaths + '/' + (p.assists || 0) + ', ' + kpPct + '% KP)',
+      text: 'Високий вплив на хід сутичок: участь у ' + kpPct + '% вбивств команди' + ((p.kills || 0) >= 8 ? (', особисто зроблено ' + p.kills + ' фрагів') : '') + '.'
+    });
+  } else {
+    items.push({
+      status: 'failed',
+      title: 'Низька участь у боях (' + (p.kills || 0) + '/' + deaths + '/' + (p.assists || 0) + ', ' + kpPct + '% KP)',
+      text: 'Лише ' + kpPct + '% участі у вбивствах команди (норма ≥ ' + targetKp + '%). Команда часто вела бої 4v5 без твоєї підтримки.'
+    });
+  }
+
+  // 6. Контроль рун
+  const targetRunes = Math.max(3, Math.floor(mins / 8));
+  if (runesTotal >= targetRunes) {
+    items.push({
+      status: 'done',
+      title: 'Контроль рун на карті (підібрано: ' + runesTotal + ')',
+      text: 'Регулярний контроль рун мудрості (Wisdom) та активних рун дав команді вагому перевагу за досвідом та темпом.'
+    });
+  } else {
+    items.push({
+      status: 'warn',
+      title: 'Слабкий контроль рун (підібрано: ' + runesTotal + ')',
+      text: 'Підібрано лише ' + runesTotal + ' рун за гру (норма ≥ ' + targetRunes + '). Руни мудрості на 7:00, 14:00, 21:00 дають критичний командний рівень.'
+    });
+  }
+
+  // 7. Виживання
+  if (deaths <= 5 && deadShare <= 10) {
+    items.push({
+      status: 'done',
+      title: 'Дисципліна виживання (лише ' + deaths + ' смертей, ' + deadMin + ' хв у таверні)',
+      text: 'Лише ' + deadShare + '% матчу проведено в таверні. Мінімум подарованого золота суперникам та високий час присутності на карті.'
+    });
+  } else if (deaths <= 8) {
+    items.push({
+      status: 'warn',
+      title: 'Помірні втрати від смертей (' + deaths + ' смертей, ' + deadMin + ' хв у таверні)',
+      text: 'Проведено в таверні ' + deadShare + '% матчу. Декілька смертей сповільнили макро-тиск та надали ворогам легкі ресурси.'
+    });
+  } else {
+    items.push({
+      status: 'failed',
+      title: 'Критична смертність (' + deaths + ' смертей, ' + deadMin + ' хв у таверні)',
+      text: 'Втрачено ' + deadShare + '% матчу в таверні. Регулярні смерті створювали провали в обороні та переламували хід гри на користь суперника.'
+    });
+  }
+
+  return items;
+}
 // @pure-end
 
 /* ======================= Stratz-style Impact Score (IMP) ======================= */
@@ -3964,15 +4154,16 @@ function buildTacticalDeathAudit(ctx) {
 
 /* ======================= Фаза 3: Макро-гра ======================= */
 function secMacro(ctx) {
-  const { p, team, enemies, dur, mins, role, parsed, addTask, H } = ctx;
+  const { m, p, team, enemies, dur, mins, role, parsed, addTask, H } = ctx;
   let out = '';
   const teamKills = team.reduce((s, x) => s + (x.kills || 0), 0);
   const kp = teamKills ? (p.kills + p.assists) / teamKills : 0;
   const d = p.deaths || 0;
   const deadTimeSec = Math.round(d * Math.min(100, 10 + mins * 1.5));
   const deadMin = (deadTimeSec / 60).toFixed(1);
-  const deadShare = Math.round((deadTimeSec / dur) * 100);
+  const deadShare = Math.round((deadTimeSec / Math.max(1, dur)) * 100);
   const wards = getWardsData(p);
+  const kdaVal = ((p.kills + p.assists) / Math.max(1, d)).toFixed(1);
 
   // Ворожий віжен для порівняння
   const oppObs = enemies.reduce((s, e) => s + (getWardsData(e).obs || 0), 0);
@@ -3983,38 +4174,72 @@ function secMacro(ctx) {
   const missedFarmGold = Math.round((deadTimeSec / 60) * ((p.gold_per_min || 300) * 0.7));
   const totalDeathLoss = goldGiven + missedFarmGold;
 
-  out += `<div class="tiles">
-    ${tile('Участь у файтах', pc(kp) + '%', kp < 0.4 ? 'warn' : 'good')}
-    ${tile('Смертей за гру', d, d >= 9 ? 'crit' : d >= 5 ? 'warn' : 'good')}
-    ${tile('Час у таверні', `${deadMin} хв (${deadShare}%)`, deadShare > 20 ? 'crit' : deadShare > 10 ? 'warn' : 'good')}
-    ${tile('Tower damage', nf(p.tower_damage || 0), (p.tower_damage || 0) < 500 && role.core ? 'crit' : (p.tower_damage || 0) === 0 ? 'warn' : 'good')}
-    ${tile('Observer варди', wards.obs, wards.obs >= 8 ? 'good' : wards.obs < 4 && !role.core ? 'crit' : '')}
-    ${tile('Sentry варди', wards.sen, wards.sen >= 10 ? 'good' : wards.sen < 4 && !role.core ? 'warn' : '')}
-  </div>`;
-
-  // 1. Детальний аналіз дисципліни смертей (адаптивні оцінки без суперечностей)
-  if (d <= 5) {
-    out += issue('good', `Зразкова дисципліна виживання: лише ${d} ${d === 1 ? 'смерть' : d < 5 ? 'смерті' : 'смертей'} за ${fmtT(dur)}`,
-      `<p>Ти провів у таверні лише <b>${deadMin} хв (${deadShare}% матчу)</b>. Смерть лише раз на ${(dur / 60 / Math.max(1, d)).toFixed(1)} хв — це відмінний показник контролю позиції, який не дозволив супернику отримувати стрік-баунті.</p>
-       <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin:8px 0;font-size:13px">
-         <div>• Збережене золото завдяки мінімуму смертей: суперник недоотримав легкі ресурси.</div>
-         <div>• Постійна присутність на карті забезпечила високу участь у бійках (${pc(kp)}%) та тиск на об'єкти.</div>
-       </div>`);
-  } else if (d <= 8) {
-    out += issue('warn', `Ціна смертей: ${d} смертей за ${fmtT(dur)}`,
-      `<p>Ти провів у таверні <b>${deadMin} хв (${deadShare}% матчу)</b>. Сумарні втрати команди склали ≈ <b>${nf(totalDeathLoss)} золота</b> (пряме золото за фраги: ≈ ${nf(goldGiven)}, недофарм: ≈ ${nf(missedFarmGold)}).</p>
-       <p>Смерть кожні ${(dur / 60 / Math.max(1, d)).toFixed(1)} хв. Зверни увагу на смерті під час пушу без огляду та збереження байбеків на вирішальних хвилинах.</p>`);
-    if (d >= 7) addTask(80, `Зменшити ризиковані виходи: не заходити за річку без бачення мінімум 2 ворожих героїв.`);
+  if (role.core) {
+    out += `<div class="tiles">
+      ${tile('Вбивства / KDA', `${p.kills}/${d}/${p.assists} (${kdaVal})`, d >= 8 ? 'warn' : 'good')}
+      ${tile('Золото / хв (GPM)', p.gold_per_min || 0, (p.gold_per_min || 0) >= (role.pos === 1 ? 650 : 550) ? 'good' : (p.gold_per_min || 0) < 450 ? 'crit' : 'warn')}
+      ${tile('Участь у бійках', pc(kp) + '%', kp < 0.4 ? 'warn' : 'good')}
+      ${tile('Шкода по спорудах', nf(p.tower_damage || 0), (p.tower_damage || 0) < 1000 ? 'crit' : (p.tower_damage || 0) >= 3000 ? 'good' : 'warn')}
+      ${tile('Шкода по героях', nf(p.hero_damage || 0), 'good')}
+      ${tile('Час у таверні', `${deadMin} хв (${deadShare}%)`, deadShare > 20 ? 'crit' : deadShare > 10 ? 'warn' : 'good')}
+    </div>`;
   } else {
-    out += issue('crit', `Критичний фід золота: ${d} смертей за ${fmtT(dur)} = втрата темпу`,
-      `<p>Ти провів у таверні <b>${deadMin} хв (${deadShare}% матчу)</b>. Сумарна економічна діра для команди склала ≈ <b>${nf(totalDeathLoss)} золота</b>.</p>
-       <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin:8px 0;font-size:13px">
-         <div>• Пряме золото, віддане ворогам: ≈ <b>${nf(goldGiven)} золота</b></div>
-         <div>• Втрачене золото від простою в таверні: ≈ <b>${nf(missedFarmGold)} золота</b></div>
-         <div style="color:var(--crit);font-weight:700;margin-top:4px">• Сумарна втрата: ≈ ${nf(totalDeathLoss)} золота!</div>
+    out += `<div class="tiles">
+      ${tile('Вбивства / KDA', `${p.kills}/${d}/${p.assists} (${kdaVal})`, d >= 9 ? 'warn' : 'good')}
+      ${tile('Участь у бійках', pc(kp) + '%', kp < 0.45 ? 'warn' : 'good')}
+      ${tile('Золото / хв (GPM)', p.gold_per_min || 0, '')}
+      ${tile('Observer варди', wards.obs, wards.obs >= 8 ? 'good' : wards.obs < 4 ? 'crit' : 'warn')}
+      ${tile('Sentry варди', wards.sen, wards.sen >= 10 ? 'good' : wards.sen < 4 ? 'warn' : 'good')}
+      ${tile('Час у таверні', `${deadMin} хв (${deadShare}%)`, deadShare > 20 ? 'crit' : deadShare > 10 ? 'warn' : 'good')}
+    </div>`;
+  }
+
+  // 1. Комплексна оцінка макро-ефективності (бойова активність, темп золота, тиск на споруди та виживання)
+  const isHighKp = kp >= 0.50 || (p.kills || 0) >= 8;
+  const isLowKp = kp < 0.40 && (p.kills || 0) < 5;
+  const isGoodFarm = !role.core || (p.gold_per_min || 0) >= (role.pos === 1 ? 620 : 520);
+  const isLowFarm = role.core && (p.gold_per_min || 0) < 480;
+  const isGoodPush = !role.core || (p.tower_damage || 0) >= 2000;
+  const isLowPush = role.core && (p.tower_damage || 0) < 1000;
+
+  if (d <= 5 && isHighKp && isGoodFarm && isGoodPush) {
+    out += issue('good', `Висока макро-ефективність: домінування на карті та бойова дисципліна`,
+      `<p>Комплексний контроль гри за ${fmtT(dur)}: високий бойовий внесок, своєчасний фарм та надійне виживання на карті.</p>
+       <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin:8px 0;font-size:13px;line-height:1.6">
+         <div>• <b>Бойовий вплив:</b> ${p.kills} вбивств, ${p.assists} асистів (${pc(kp)}% участі у бійках команди).</div>
+         <div>• <b>Темп золота:</b> ${p.gold_per_min || 0} GPM — стабільна перевага за нетворсом і швидкий вихід на ключові слоти.</div>
+         <div>• <b>Тиск на споруди:</b> ${nf(p.tower_damage || 0)} шкоди по спорудах — перевага конвертувалася у взяття об'єктів.</div>
+         <div>• <b>Виживання:</b> лише ${d} ${d === 1 ? 'смерть' : d < 5 ? 'смерті' : 'смертей'} (${deadMin} хв у таверні, ${deadShare}% матчу). Суперник не отримав легких стрік-баунті.</div>
+       </div>`);
+  } else if (d <= 6 && (isLowPush || isLowKp || isLowFarm)) {
+    out += issue('warn', `Дисбаланс макро-гри: надійне виживання при недостатньому темпі чи тиску`,
+      `<p>Показник смертей під контролем (лише ${d} ${d === 1 ? 'смерть' : d < 5 ? 'смерті' : 'смертей'} за ${fmtT(dur)}, ${deadMin} хв у таверні), проте реалізація переваги була обмеженою.</p>
+       <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin:8px 0;font-size:13px;line-height:1.6">
+         <div>• <b>Бойова активність:</b> ${p.kills} вбивств, ${p.assists} асистів (${pc(kp)}% участі у бійках)${isLowKp ? ' — команда часто діяла без твоєї прямої підтримки.' : '.'}</div>
+         <div>• <b>Темп золота:</b> ${p.gold_per_min || 0} GPM${isLowFarm ? ' — відставання від цільового темпу для твоєї ролі.' : '.'}</div>
+         <div>• <b>Шкода по спорудах:</b> ${nf(p.tower_damage || 0)}${isLowPush ? ' — виграні бійки не перетворювалися на знесення веж.' : '.'}</div>
+       </div>`);
+    if (isLowPush && role.core) addTask(85, `Після кожного виграного файту — бити вежу або забирати Рошана протягом 30 секунд.`);
+  } else if (d >= 9) {
+    out += issue('crit', `Критична втрата макро-контролю: ${d} смертей за ${fmtT(dur)} = провал темпу`,
+      `<p>Ти провів у таверні <b>${deadMin} хв (${deadShare}% матчу)</b>. Сумарні втрати команди через простій та віддане золото склали ≈ <b>${nf(totalDeathLoss)} золота</b>.</p>
+       <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin:8px 0;font-size:13px;line-height:1.6">
+         <div>• <b>Пряме золото ворогам:</b> ≈ ${nf(goldGiven)} золота від фрагів.</div>
+         <div>• <b>Недофарм через простій:</b> ≈ ${nf(missedFarmGold)} золота за ${deadMin} хв у таверні.</div>
+         <div>• <b>Бойовий підсумок:</b> ${p.kills} вбивств, ${p.assists} асистів, темп ${p.gold_per_min || 0} GPM.</div>
+         <div style="color:var(--crit);font-weight:700;margin-top:4px">• Сумарний дефіцит команди: ≈ ${nf(totalDeathLoss)} золота!</div>
        </div>
-       <p>Смерть кожні ${(dur / 60 / Math.max(1, d)).toFixed(1)} хв свідчить про регулярне потрапляння під перший фокус та гру наосліп.</p>`);
+       <p>Смерть кожні ${(dur / 60 / Math.max(1, d)).toFixed(1)} хв свідчить про регулярне потрапляння під фокус та гру наосліп без прикриття команди.</p>`);
     addTask(95, `Зменшити смерті до максимуму 5: не виходити на відкриті лінії без бачення мінімум 3 ворогів на мінікарті.`);
+  } else {
+    out += issue('warn', `Ціна помилок на карті: ${d} смертей за ${fmtT(dur)}`,
+      `<p>Ти провів у таверні <b>${deadMin} хв (${deadShare}% матчу)</b>. Сумарні економічні втрати склали ≈ <b>${nf(totalDeathLoss)} золота</b> (фраги: ≈ ${nf(goldGiven)}, недофарм: ≈ ${nf(missedFarmGold)}).</p>
+       <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin:8px 0;font-size:13px;line-height:1.6">
+         <div>• <b>Бойовий підсумок:</b> ${p.kills} вбивств, ${p.assists} асистів (${pc(kp)}% KP).</div>
+         <div>• <b>Економіка:</b> ${p.gold_per_min || 0} GPM, тиск по спорудах: ${nf(p.tower_damage || 0)}.</div>
+       </div>
+       <p>Смерть кожні ${(dur / 60 / Math.max(1, d)).toFixed(1)} хв. Зверни увагу на збереження байбеку та безпечний пуш під прикриттям вардів.</p>`);
+    if (d >= 7) addTask(80, `Зменшити ризиковані виходи: не заходити за річку без бачення мінімум 2 ворожих героїв.`);
   }
 
   // 2. Тактичний аудит смертей: Чому і від кого відбулися ці смерті
@@ -4033,7 +4258,7 @@ function secMacro(ctx) {
     addTask(85, `Після кожного виграного файту — <b>бити вежу або забирати Рошана протягом 30 секунд</b>.`);
   }
 
-  // 3. Аудит віжену та девардингу
+  // 4. Аудит віжену та девардингу
   if (!role.core) {
     const isVisionDeficit = allyObs < oppObs;
     out += issue(wards.obs < 5 ? 'crit' : isVisionDeficit ? 'warn' : 'good',
@@ -4043,13 +4268,31 @@ function secMacro(ctx) {
     if (wards.obs < 6) addTask(75, `Купувати Observer варди за кулдауном: ставити мінімум <b>8+ Obs та 10+ Sentry</b> за 30+ хвилин гри.`);
   }
 
-  // 4. Макро-об'єкти карти: Руни мудрості, Лотоси та Рошан
-  out += `<div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:12px 0;font-size:13px;line-height:1.6">
-    <div style="font-weight:750;font-size:14px;color:var(--accent);margin-bottom:6px">Чекліст ключових макро-таймінгів на карті:</div>
-    <div>• <b>Руни мудрості (Wisdom Runes на 7:00, 14:00, 21:00):</b> Критичне джерело досвіду для саппортів. Пропуск руни на 7:00 віддає ворожій команді відставання в 1.5–2 рівні.</div>
-    <div>• <b>Пруди Лотосів (Lotus Pools кожні 3 хвилини):</b> Дають безкоштовне відновлення ХП/мани. Забирай лотоси на 3:00, 6:00, 9:00, щоб не витрачати золото на банки.</div>
-    <div>• <b>Контроль Рошана:</b> Після 20-ї хвилини кожен бій біля ворожої Т2 має конвертуватися в забір Егіди для безпечного заходу на хайграунд.</div>
-  </div>`;
+  // 5. Чекліст ключових макро-цілей (що було зроблено, а що пропущено)
+  const scorecard = buildMacroScorecard(p, m, role);
+  if (scorecard && scorecard.length) {
+    const badgeMap = {
+      done: { cls: 'good', text: 'ВИКОНАНО' },
+      failed: { cls: 'crit', text: 'ПРОПУЩЕНО' },
+      warn: { cls: 'warn', text: 'ЗВЕРНИ УВАГУ' },
+      info: { cls: '', text: 'ІНФОРМАЦІЯ' }
+    };
+    out += `<div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:16px;margin:16px 0">
+      <div style="font-weight:750;font-size:14px;color:var(--text);margin-bottom:12px">Чекліст ключових макро-цілей: виконання та пропуски</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${scorecard.map(item => {
+          const b = badgeMap[item.status] || badgeMap.info;
+          return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:8px;background:var(--card);border:1px solid var(--border)">
+            <span class="pill ${b.cls}" style="flex-shrink:0;margin-right:0">${b.text}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:650;font-size:13px;color:var(--text);margin-bottom:2px">${esc(item.title)}</div>
+              <div style="font-size:12px;color:var(--muted);line-height:1.5">${esc(item.text)}</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
 
   return `<section class="card"><h2><span class="sec-tag">08</span>Фаза 3: Макро-гра та бойова дисципліна</h2>${out}</section>`;
 }
@@ -4105,7 +4348,7 @@ async function renderTrendFor(accountId, currentHeroName) {
       ${tile('KDA у поразках', kL.toFixed(2), kL < 2 ? 'crit' : 'warn')}
       ${tile('Смерті: перемоги', dW.toFixed(1))}
       ${tile('Смерті: поразки', dL.toFixed(1), dL - dW >= 3 ? 'crit' : '')}
-      ${tile('Сер. tower damage', nf(tdAvg), tdAvg < 1500 ? 'crit' : 'good')}
+      ${tile('Сер. шкода по спорудах', nf(tdAvg), tdAvg < 1500 ? 'crit' : 'good')}
     </div>
     ${habits.join('')}
     <div class="two" style="margin-top:14px">
