@@ -35,40 +35,64 @@ const state = {
   activeParsePoll: null
 };
 
+const storage = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  remove(k) { try { localStorage.removeItem(k); } catch {} },
+  getSession(k) { try { return sessionStorage.getItem(k); } catch { return null; } },
+  setSession(k, v) { try { sessionStorage.setItem(k, v); } catch {} }
+};
+
+const FALLBACK_HEROES = [
+  { id: 131, name: 'npc_dota_hero_ringmaster', localized_name: 'Ring Master', primary_attr: 'int', roles: ['Support','Nuker','Escape','Disabler'], img: '/apps/dota2/images/dota_react/heroes/ringmaster.png' },
+  { id: 135, name: 'npc_dota_hero_dawnbreaker', localized_name: 'Dawnbreaker', primary_attr: 'str', roles: ['Carry','Durable'], img: '/apps/dota2/images/dota_react/heroes/dawnbreaker.png' },
+  { id: 104, name: 'npc_dota_hero_legion_commander', localized_name: 'Legion Commander', primary_attr: 'str', roles: ['Carry','Disabler','Initiator','Durable','Nuker'], img: '/apps/dota2/images/dota_react/heroes/legion_commander.png' },
+  { id: 44, name: 'npc_dota_hero_phantom_assassin', localized_name: 'Phantom Assassin', primary_attr: 'agi', roles: ['Carry','Escape'], img: '/apps/dota2/images/dota_react/heroes/phantom_assassin.png' },
+  { id: 14, name: 'npc_dota_hero_pudge', localized_name: 'Pudge', primary_attr: 'str', roles: ['Disabler','Initiator','Durable','Nuker'], img: '/apps/dota2/images/dota_react/heroes/pudge.png' },
+  { id: 81, name: 'npc_dota_hero_chaos_knight', localized_name: 'Chaos Knight', primary_attr: 'str', roles: ['Carry','Disabler','Durable','Pusher','Initiator'], img: '/apps/dota2/images/dota_react/heroes/chaos_knight.png' },
+  { id: 113, name: 'npc_dota_hero_arc_warden', localized_name: 'Arc Warden', primary_attr: 'all', roles: ['Carry','Escape','Nuker'], img: '/apps/dota2/images/dota_react/heroes/arc_warden.png' },
+  { id: 123, name: 'npc_dota_hero_hoodwink', localized_name: 'Hoodwink', primary_attr: 'agi', roles: ['Support','Nuker','Escape','Disabler'], img: '/apps/dota2/images/dota_react/heroes/hoodwink.png' },
+  { id: 93, name: 'npc_dota_hero_slark', localized_name: 'Slark', primary_attr: 'agi', roles: ['Carry','Escape','Disabler','Nuker'], img: '/apps/dota2/images/dota_react/heroes/slark.png' },
+  { id: 30, name: 'npc_dota_hero_witch_doctor', localized_name: 'Witch Doctor', primary_attr: 'int', roles: ['Support','Nuker','Disabler'], img: '/apps/dota2/images/dota_react/heroes/witch_doctor.png' }
+];
+
 const BASE_API = 'https://api.opendota.com/api';
 
 async function api(path, opts = {}) {
   let url = path.startsWith('http') ? path : BASE_API + path;
-  const apiKey = localStorage.getItem('opendota_api_key') || '';
+  const apiKey = storage.get('opendota_api_key') || '';
   if (apiKey && !url.includes('api_key=')) {
     url += (url.includes('?') ? '&' : '?') + 'api_key=' + encodeURIComponent(apiKey);
   }
   let lastErr = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const res = await fetch(url, opts);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(url, { ...opts, signal: controller.signal });
+      clearTimeout(timer);
       if (res.status === 429) {
-        const pause = (attempt + 1) * 2000;
+        const pause = (attempt + 1) * 1500;
         setStatus(`Ліміт запитів OpenDota API (429), очікування ${(pause/1000).toFixed(1)} с…`);
         await sleep(pause);
         continue;
       }
-      if (!res.ok) throw new Error('HTTP ' + res.status + ' (' + res.statusText + ')');
+      if (!res.ok) throw new Error('HTTP ' + res.status + ' (' + (res.statusText || 'Error') + ')');
       return await res.json();
     } catch (e) {
       lastErr = e;
-      if (attempt < 2) await sleep(800 * (attempt + 1));
+      if (attempt < 1) await sleep(600);
     }
   }
-  throw lastErr || new Error('Ліміт запитів OpenDota (HTTP 429). Зачекайте хвилину або додайте API-ключ.');
+  throw lastErr || new Error('Помилка з\'єднання з сервером OpenDota (таймаут або відсутня відповідь).');
 }
 
 async function loadConstants() {
   if (state.constantsLoaded) return;
   const TTL = 24 * 60 * 60 * 1000; // 24 години
-  const get = async (k, ep) => {
+  const get = async (k, ep, cdnUrl) => {
     try {
-      const c = localStorage.getItem(k);
+      const c = storage.get(k);
       if (c) {
         const parsed = JSON.parse(c);
         if (parsed && parsed.ts && (Date.now() - parsed.ts < TTL) && parsed.data) {
@@ -76,15 +100,40 @@ async function loadConstants() {
         }
       }
     } catch {}
-    const d = await api(ep);
-    try { localStorage.setItem(k, JSON.stringify({ ts: Date.now(), data: d })); } catch {}
-    return d;
+    try {
+      const d = await api(ep);
+      storage.set(k, JSON.stringify({ ts: Date.now(), data: d }));
+      return d;
+    } catch (apiErr) {
+      if (cdnUrl) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 4000);
+          const res = await fetch(cdnUrl, { signal: controller.signal });
+          clearTimeout(timer);
+          if (res.ok) {
+            const d = await res.json();
+            storage.set(k, JSON.stringify({ ts: Date.now(), data: d }));
+            return d;
+          }
+        } catch {}
+      }
+      throw apiErr;
+    }
   };
   setStatus('Завантаження бази героїв і предметів…');
-  const [hArr, iObj] = await Promise.all([
-    get('d2_h_stats_v3', '/heroStats').catch(() => get('d2_heroes_v3', '/constants/heroes')),
-    get('d2_items_v3', '/constants/items')
-  ]);
+  let hArr = null, iObj = null;
+  try {
+    [hArr, iObj] = await Promise.all([
+      get('d2_h_stats_v3', '/heroStats', 'https://cdn.jsdelivr.net/gh/odota/dotaconstants/build/heroes.json')
+        .catch(() => get('d2_heroes_v3', '/constants/heroes', 'https://cdn.jsdelivr.net/gh/odota/dotaconstants/build/heroes.json')),
+      get('d2_items_v3', '/constants/items', 'https://cdn.jsdelivr.net/gh/odota/dotaconstants/build/items.json')
+    ]);
+  } catch (err) {
+    console.warn('Network constants failed, using fallback:', err);
+    hArr = FALLBACK_HEROES;
+    iObj = {};
+  }
   const parseHeroWinrate = h => {
     const pubPicks = Array.from({length: 8}, (_, i) => h[`${i+1}_pick`] || 0).reduce((s, v) => s + v, 0);
     const pubWins = Array.from({length: 8}, (_, i) => h[`${i+1}_win`] || 0).reduce((s, v) => s + v, 0);
@@ -421,9 +470,49 @@ async function openStandaloneMatch(matchId) {
   await loadMatch(matchId, null);
 }
 
+function showOfflineDemoNotice(matchId) {
+  const errBox = $('#error');
+  if (errBox) {
+    errBox.innerHTML = `
+      <div class="card" style="border-left:4px solid var(--accent);background:var(--card);margin-bottom:14px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <b style="color:var(--accent)">Офлайн демо-режим:</b> Завантажено збережену телеметрію матчу #${matchId}. Усі розрахунки драфту, вибір героя, графіки та чеклисти повністю доступні.
+        </div>
+        <button class="btn btn-sm" type="button" onclick="this.closest('.card').remove()">Зрозуміло</button>
+      </div>
+    `;
+  }
+}
+
 async function loadMatch(matchId, accountId) {
   setStatus('Завантаження повної телеметрії матчу #' + matchId + '…');
-  const m = await api(`/matches/${matchId}`);
+  let m = null;
+  const isDemo = String(matchId) === '9036473892' || String(matchId) === '9044569588' || !matchId;
+
+  try {
+    m = await api(`/matches/${matchId}`);
+  } catch (apiErr) {
+    console.warn('Live match fetch failed:', apiErr);
+    if (isDemo) {
+      if (typeof EMBEDDED_DEMO_MATCH !== 'undefined' && EMBEDDED_DEMO_MATCH) {
+        m = EMBEDDED_DEMO_MATCH;
+      } else {
+        try {
+          const res = await fetch('./tests/fixtures/match_9036473892.json');
+          if (res.ok) m = await res.json();
+        } catch {}
+      }
+      if (m) showOfflineDemoNotice(m.match_id);
+    }
+    if (!m) {
+      if (typeof EMBEDDED_DEMO_MATCH !== 'undefined' && EMBEDDED_DEMO_MATCH) {
+        showError(`Сервери OpenDota наразі недоступні (HTTP 524 / Таймаут). <button class="btn btn-sm btn-primary" style="margin-left:8px" onclick="run('9036473892')">Запустити офлайн демо-матч</button>`);
+        return;
+      }
+      throw apiErr;
+    }
+  }
+
   state.match = m;
 
   let target = null;
@@ -432,7 +521,7 @@ async function loadMatch(matchId, accountId) {
   if (!target) target = m.players[0];
   state.slot = target.player_slot;
 
-  if (target) await getHeroBenchmarks(target.hero_id);
+  if (target) await getHeroBenchmarks(target.hero_id).catch(() => null);
 
   setStatus('Завантаження статистики матчапів героїв (OpenDota)…');
   try { await loadHeroMatchups(m.players.map(x => x.hero_id)); } catch {}
@@ -4049,36 +4138,35 @@ function applyTheme(t, persist = true) {
   document.documentElement.dataset.theme = t;
   $('#themeBtn').textContent = t === 'dark' ? 'Тема: Світла' : 'Тема: Темна';
   $('#themeBtn').setAttribute('aria-pressed', String(t === 'light'));
-  if (persist) { try { localStorage.setItem('d2coach_theme', t); } catch {} }
+  if (persist) { storage.set('d2coach_theme', t); }
 }
 
 async function init() {
-  let savedT = null;
-  try { savedT = localStorage.getItem('d2coach_theme'); } catch {}
+  const savedT = storage.get('d2coach_theme');
   const sysLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
   applyTheme(savedT || (sysLight ? 'light' : 'dark'), !!savedT);
-  $('#themeBtn').addEventListener('click', () => {
+  $('#themeBtn')?.addEventListener('click', () => {
     const cur = document.documentElement.dataset.theme;
     applyTheme(cur === 'dark' ? 'light' : 'dark');
   });
 
   const keyInput = $('#apiKeyInput');
   const keyModal = $('#apiKeyModal');
-  if (keyInput) keyInput.value = localStorage.getItem('opendota_api_key') || '';
+  if (keyInput) keyInput.value = storage.get('opendota_api_key') || '';
   $('#apiKeyBtn')?.addEventListener('click', () => {
     keyModal.style.display = keyModal.style.display === 'none' ? 'block' : 'none';
   });
   $('#saveApiKeyBtn')?.addEventListener('click', () => {
     const k = (keyInput.value || '').trim();
-    if (k) localStorage.setItem('opendota_api_key', k);
-    else localStorage.removeItem('opendota_api_key');
+    if (k) storage.set('opendota_api_key', k);
+    else storage.remove('opendota_api_key');
     keyModal.style.display = 'none';
     setStatus('API-ключ збережено!');
     setTimeout(clearStatus, 2000);
   });
   $('#clearApiKeyBtn')?.addEventListener('click', () => {
     if (keyInput) keyInput.value = '';
-    localStorage.removeItem('opendota_api_key');
+    storage.remove('opendota_api_key');
     setStatus('API-ключ видалено.');
     setTimeout(clearStatus, 2000);
   });
@@ -4087,18 +4175,79 @@ async function init() {
 
   renderRecentSearches();
 
+  // Floating Hero Dock click delegation (permanent, immune to DOM re-renders)
+  const dock = $('#floatingHeroDock');
+  if (dock) {
+    dock.addEventListener('click', (e) => {
+      const b = e.target.closest('.dock-hero-btn');
+      if (b) {
+        e.preventDefault();
+        e.stopPropagation();
+        const targetSlot = +b.dataset.slot;
+        if (targetSlot === state.slot) {
+          const el = $('#heroDetailCard') || $('#analysis');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        }
+        selectHero(targetSlot, true);
+        return;
+      }
+      const jb = e.target.closest('#dockJumpBtn');
+      if (jb) {
+        e.preventDefault();
+        const el = $('#heroDetailCard') || $('#analysis');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      const cb = e.target.closest('#dockCollapseBtn');
+      if (cb) {
+        e.preventDefault();
+        dock.classList.toggle('collapsed');
+      }
+    });
+  }
+
+  // Mini strip click delegation on #analysis (permanent)
+  const analysis = $('#analysis');
+  if (analysis) {
+    analysis.addEventListener('click', (e) => {
+      const b = e.target.closest('.hero-mini-btn');
+      if (b) {
+        e.preventDefault();
+        const targetSlot = +b.dataset.slot;
+        if (targetSlot === state.slot) {
+          const el = $('#heroDetailCard') || $('#analysis');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        }
+        selectHero(targetSlot, true);
+      }
+    });
+  }
+
+  // Quick preset click delegation
   document.addEventListener('click', e => {
     const qBtn = e.target.closest('[data-quick]');
     if (qBtn) {
+      e.preventDefault();
       const val = qBtn.dataset.quick;
-      $('#q').value = val;
+      if ($('#q')) $('#q').value = val;
       run(val);
     }
   });
 
-  // Автостарт лише за прямим посиланням: ?q=ID або #ID
+  // Search form submit
+  $('#searchForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = $('#q')?.value;
+    if (val) run(val);
+  });
+
+  // Автостарт: якщо є ID у посиланні (?q=ID або #ID), інакше завантажуємо перевірений демо-матч
   const deep = new URLSearchParams(location.search).get('q') || location.hash.replace('#', '').trim();
-  if (deep) { $('#q').value = deep; run(deep); }
+  const startId = deep || '9036473892';
+  if ($('#q')) $('#q').value = startId;
+  run(startId);
 }
 
 document.addEventListener('DOMContentLoaded', init);

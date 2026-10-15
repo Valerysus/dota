@@ -35,8 +35,21 @@ with open(CSS_PATH, "r", encoding="utf-8") as f:
 with open(JS_PATH, "r", encoding="utf-8") as f:
     js = f.read()
 
+FIXTURE_PATH = os.path.join(BASE_DIR, "tests", "fixtures", "match_9036473892.json")
+embedded_fixture_js = ""
+if os.path.exists(FIXTURE_PATH):
+    import json
+    with open(FIXTURE_PATH, "r", encoding="utf-8") as f:
+        data = json.load(f)
+        data.pop("cosmetics", None)
+        data.pop("chat", None)
+        min_json = json.dumps(data, separators=(',', ':'))
+        embedded_fixture_js = f"const EMBEDDED_DEMO_MATCH = {min_json};\n"
+
+js_full = embedded_fixture_js + js
+
 # Assemble single-file HTML
-html_content = template.replace("/* {{CSS}} */\n", css).replace("/* {{JS}} */\n", js)
+html_content = template.replace("/* {{CSS}} */\n", css).replace("/* {{JS}} */\n", js_full)
 
 with open(OUT_PATH, "w", encoding="utf-8") as f:
     f.write(html_content)

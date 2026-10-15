@@ -47,13 +47,17 @@
 
   <section class="card">
     <form class="search" id="searchForm" autocomplete="off" onsubmit="if(window.run) window.run(document.getElementById('q').value); return false;">
-      <input id="q" placeholder="Account ID (Steam32), SteamID64 або Match ID" aria-label="ID гравця або матчу" autofocus>
+      <input id="q" value="9036473892" placeholder="Account ID (Steam32), SteamID64 або Match ID" aria-label="ID гравця або матчу" autofocus>
       <button class="btn btn-primary" id="searchSubmitBtn" type="submit">Проаналізувати</button>
     </form>
-    <div style="margin-top:10px"><button type="button" class="btn btn-sm" id="demoBtn" data-quick="9044569588">Спробувати демо-матч</button></div>
+    <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button type="button" class="btn btn-sm btn-primary" id="demoBtn" data-quick="9036473892">Спробувати демо-матч (Slark & Arc Warden)</button>
+      <span class="muted" style="font-size:12px">Миттєвий запуск без затримок навіть офлайн</span>
+    </div>
     <div class="hint-line">Розпізнається автоматично: Steam32 (напр. 94054712), SteamID64 (7656119…), номер матчу (10 цифр) або посилання з OpenDota/Dotabuff/Steam.</div>
     <div class="quick-presets" id="quickPresets" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:13px">
       <span class="muted">Швидкі розбори:</span>
+      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="9036473892">Матч 9036473892 (Slark & Arc Warden)</button>
       <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="9044569588">Матч 9044569588 (Bloodseeker)</button>
       <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="9043612326">Матч 9043612326</button>
       <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="9038892612">Матч 9038892612</button>
