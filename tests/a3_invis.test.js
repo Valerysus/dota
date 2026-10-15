@@ -60,4 +60,69 @@ assert.strictEqual(isCoreSlotCap, true);
 const expectedCoreAdvice = "Координація з саппортами (Pos 4-5) щодо наявності Dust/Sentry у бійках та контроль позиції через здібності розвідки";
 assert.ok(expectedCoreAdvice.includes('Координація з саппортами'));
 
+// Test 5 (Task 15): Fallback path without stateObj.heroAbilities finds Slark, Hoodwink, and Treant
+const fallbackHeroData = {
+  ...heroData,
+  93: { id: 93, short: 'slark', dname: 'Slark' },
+  123: { id: 123, short: 'hoodwink', dname: 'Hoodwink' },
+  83: { id: 83, short: 'treant', dname: 'Treant Protector' }
+};
+const fallbackHeroFn = (id) => fallbackHeroData[id] || { id, short: 'unknown', dname: 'Unknown' };
+const fallbackEnemies = [
+  { hero_id: 93, items: [] },  // Slark
+  { hero_id: 123, items: [] }, // Hoodwink
+  { hero_id: 83, items: [] },  // Treant Protector
+  { hero_id: 1, items: [] }    // Anti-Mage (no invis item)
+];
+const detectedFallback = detectInvisEnemies(fallbackEnemies, fallbackHeroFn, finalItemsFn, {}); // stateObj without heroAbilities
+assert.strictEqual(detectedFallback.length, 3, 'Slark, Hoodwink, and Treant must be detected in fallback');
+const fallbackNames = detectedFallback.map(h => h.dname);
+assert.ok(fallbackNames.includes('Slark'), 'Slark must be found in fallback');
+assert.ok(fallbackNames.includes('Hoodwink'), 'Hoodwink must be found in fallback');
+assert.ok(fallbackNames.includes('Treant Protector'), 'Treant Protector must be found in fallback');
+
+// Test 6 (Task 16): Evaluation on fixture match 9036473892
+const fixtureMatch = require('./fixtures/match_9036473892.json');
+const fixtureHeroMap = {
+  135: { id: 135, short: 'dawnbreaker', dname: 'Dawnbreaker' },
+  81: { id: 81, short: 'chaos_knight', dname: 'Chaos Knight' },
+  93: { id: 93, short: 'slark', dname: 'Slark' },
+  123: { id: 123, short: 'hoodwink', dname: 'Hoodwink' },
+  14: { id: 14, short: 'pudge', dname: 'Pudge' },
+  44: { id: 44, short: 'phantom_assassin', dname: 'Phantom Assassin' },
+  113: { id: 113, short: 'arc_warden', dname: 'Arc Warden' },
+  30: { id: 30, short: 'witch_doctor', dname: 'Witch Doctor' },
+  131: { id: 131, short: 'ringmaster', dname: 'Ringmaster' },
+  104: { id: 104, short: 'legion_commander', dname: 'Legion Commander' }
+};
+const fixtureHeroFn = (id) => fixtureHeroMap[id] || { id, short: 'hero_' + id, dname: 'Hero ' + id };
+const radiantEnemies = fixtureMatch.players.filter(p => p.player_slot < 128); // Dawnbreaker, CK, Slark, Hoodwink, Pudge
+
+// State with ability descriptions including reveal/true sight mentions (e.g. Slark Shadow Dance)
+const mockAbilitiesState = {
+  heroAbilities: {
+    npc_dota_hero_slark: { abilities: ['slark_shadow_dance'] },
+    npc_dota_hero_hoodwink: { abilities: ['hoodwink_scurry'] },
+    npc_dota_hero_pudge: { abilities: ['pudge_meat_hook', 'pudge_rot', 'pudge_dismember'] }
+  },
+  abilities: {
+    slark_shadow_dance: {
+      desc: "Slark hides himself in a cloud of shadows, becoming invisible. Attacking, casting spells, and using items will not reveal Slark. Cannot be revealed by True Sight."
+    },
+    hoodwink_scurry: {
+      desc: "Hoodwink gains bonus movement speed and phased collision, and gains camouflage (invisibility) when near trees."
+    },
+    pudge_meat_hook: { desc: "Launches a bloody hook at a unit or location, dragging the first unit back." },
+    pudge_rot: { desc: "A toxic cloud that deals intense damage and slows movement." },
+    pudge_dismember: { desc: "Chunnels to dismember an enemy unit, disabling them." }
+  }
+};
+
+const detectedFixture = detectInvisEnemies(radiantEnemies, fixtureHeroFn, finalItemsFn, mockAbilitiesState);
+const detectedFixtureNames = detectedFixture.map(h => h.dname);
+assert.ok(detectedFixtureNames.includes('Slark'), 'Fixture: Slark must be detected even with reveal/true sight in description');
+assert.ok(detectedFixtureNames.includes('Hoodwink'), 'Fixture: Hoodwink must be detected');
+assert.ok(!detectedFixtureNames.includes('Pudge'), 'Fixture: Pudge must NOT be detected as invis');
+
 console.log('All Task A3 tests passed successfully!');
+

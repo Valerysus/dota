@@ -134,3 +134,29 @@ test('A5: fixture evaluation on match 9036473892', () => {
   // There are fewer than 3 candidates (in fact, 0 built-in candidates). It must NOT pad with 3 templates!
   assert.ok(awPlan.length < 3, 'Arc Warden plan should not be padded with filler templates');
 });
+
+test('A5: task with <script> in hero name is safely escaped in action plan', () => {
+  const ctxPure = loadPureFunctions();
+  const maliciousHeroName = '<script>alert("xss")</script>';
+
+  // When task is formatted with escaped hero name
+  const safeEscapedTask = {
+    w: 80,
+    text: `Фокусувати <b>${ctxPure.esc(maliciousHeroName)}</b> у бійках`
+  };
+  const plan1 = ctxPure.buildActionPlan({ p: { player_slot: 0 } }, [safeEscapedTask]);
+  assert.ok(plan1.length > 0);
+  assert.ok(!plan1.some(t => t.text.includes('<script>')), 'Action plan must NOT contain unescaped <script>');
+  assert.ok(plan1.some(t => t.text.includes('&lt;script&gt;')), 'Hero name with script tag must be escaped to &lt;script&gt;');
+
+  // When task is passed with raw unescaped hero name
+  const rawMaliciousTask = {
+    w: 80,
+    text: `Фокусувати <b>${maliciousHeroName}</b> у бійках`
+  };
+  const plan2 = ctxPure.buildActionPlan({ p: { player_slot: 0 } }, [rawMaliciousTask]);
+  assert.ok(plan2.length > 0);
+  assert.ok(!plan2.some(t => t.text.includes('<script>')), 'Action plan must NOT contain unescaped <script>');
+  assert.ok(plan2.some(t => t.text.includes('&lt;script&gt;')), 'Raw script in task must be escaped by buildActionPlan');
+});
+

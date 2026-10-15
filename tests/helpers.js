@@ -28,6 +28,7 @@ function loadPureFunctions(customContext = {}) {
     String,
     Boolean,
     RegExp,
+    esc: (s) => (s == null ? '' : String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
     state: { match: null, heroes: {}, items: {}, itemById: {} },
     hero: (id) => ({ roles: [] }),
     positionPools: () => ({ 1: [], 2: [], 3: [], 4: [], 5: [] }),
