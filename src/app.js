@@ -56,6 +56,129 @@ const FALLBACK_HEROES = [
   { id: 30, name: 'npc_dota_hero_witch_doctor', localized_name: 'Witch Doctor', primary_attr: 'int', roles: ['Support','Nuker','Disabler'], img: '/apps/dota2/images/dota_react/heroes/witch_doctor.png' }
 ];
 
+// Common community nicknames, keyed by OpenDota's stable internal hero name.
+const HERO_NICKNAMES = {
+  antimage: 'AM',
+  axe: 'Axe',
+  bloodseeker: 'BS',
+  crystal_maiden: 'CM',
+  drow_ranger: 'Drow',
+  earthshaker: 'Shaker',
+  juggernaut: 'Jugg',
+  mirana: 'PotM',
+  morphling: 'Morph',
+  nevermore: 'SF',
+  phantom_lancer: 'PL',
+  puck: 'Puck',
+  pudge: 'Pudge',
+  razor: 'Razor',
+  sand_king: 'SK',
+  storm_spirit: 'Storm',
+  sven: 'Sven',
+  tiny: 'Tiny',
+  vengefulspirit: 'VS',
+  windrunner: 'WR',
+  zuus: 'Zeus',
+  kunkka: 'Kunkka',
+  lina: 'Lina',
+  lion: 'Lion',
+  shadow_shaman: 'SS',
+  riki: 'Riki',
+  enigma: 'Enigma',
+  tinker: 'Tinker',
+  sniper: 'Sniper',
+  necrolyte: 'Necro',
+  warlock: 'Warlock',
+  beastmaster: 'BM',
+  queenofpain: 'QoP',
+  skeleton_king: 'Wraith King',
+  death_prophet: 'DP',
+  phantom_assassin: 'PA',
+  pugna: 'Pugna',
+  templar_assassin: 'TA',
+  viper: 'Viper',
+  luna: 'Luna',
+  dragon_knight: 'DK',
+  dazzle: 'Dazzle',
+  rattletrap: 'Clock',
+  leshrac: 'Leshrac',
+  furion: 'NP',
+  life_stealer: 'LS',
+  dark_seer: 'DS',
+  clinkz: 'Clinkz',
+  omniknight: 'Omni',
+  enchantress: 'Enchantress',
+  huskar: 'Huskar',
+  night_stalker: 'NS',
+  broodmother: 'Brood',
+  bounty_hunter: 'BH',
+  weaver: 'Weaver',
+  jakiro: 'Jakiro',
+  batrider: 'Bat',
+  chen: 'Chen',
+  spectre: 'Spec',
+  ancient_apparition: 'AA',
+  doom_bringer: 'Doom',
+  ursa: 'Ursa',
+  spirit_breaker: 'Bara',
+  gyrocopter: 'Gyro',
+  alchemist: 'Alch',
+  invoker: 'Invoker',
+  silencer: 'Silencer',
+  obsidian_destroyer: 'OD',
+  lycan: 'Lycan',
+  brewmaster: 'Brew',
+  shadow_demon: 'SD',
+  lone_druid: 'LD',
+  chaos_knight: 'CK',
+  meepo: 'Meepo',
+  treant: 'Treant',
+  ogre_magi: 'Ogre',
+  undying: 'Undying',
+  rubick: 'Rubick',
+  disruptor: 'Disruptor',
+  nyx_assassin: 'Nyx',
+  naga_siren: 'Naga',
+  keeper_of_the_light: 'KotL',
+  wisp: 'IO',
+  visage: 'Visage',
+  slark: 'Slark',
+  medusa: 'Medusa',
+  troll_warlord: 'Troll',
+  centaur: 'Centaur',
+  magnataur: 'Magnus',
+  shredder: 'Timber',
+  bristleback: 'BB',
+  tusk: 'Tusk',
+  skywrath_mage: 'Sky',
+  abaddon: 'Abba',
+  elder_titan: 'ET',
+  legion_commander: 'LC',
+  techies: 'Techies',
+  ember_spirit: 'Ember',
+  earth_spirit: 'ES',
+  underlord: 'Pit Lord',
+  terrorblade: 'TB',
+  phoenix: 'Phoenix',
+  oracle: 'Oracle',
+  winter_wyvern: 'WW',
+  arc_warden: 'Arc',
+  monkey_king: 'MK',
+  dark_willow: 'DW',
+  pangolier: 'Pango',
+  grimstroke: 'Grim',
+  hoodwink: 'Hoodwink',
+  void_spirit: 'Void',
+  snapfire: 'Snap',
+  mars: 'Mars',
+  dawnbreaker: 'Dawn',
+  marci: 'Marci',
+  primal_beast: 'PB',
+  muerta: 'Muerta',
+  ringmaster: 'Ringmaster',
+  kez: 'Kez'
+};
+
 const BASE_API = 'https://api.opendota.com/api';
 
 async function api(path, opts = {}) {
@@ -152,6 +275,7 @@ async function loadConstants() {
         attr: h.primary_attr,
         roles: h.roles || [],
         short: (h.name || '').replace('npc_dota_hero_', ''),
+        nickname: HERO_NICKNAMES[(h.name || '').replace('npc_dota_hero_', '')] || '',
         winrate: parseHeroWinrate(h)
       };
     });
@@ -165,6 +289,7 @@ async function loadConstants() {
         attr: h.primary_attr,
         roles: h.roles || [],
         short: (h.name || '').replace('npc_dota_hero_', ''),
+        nickname: HERO_NICKNAMES[(h.name || '').replace('npc_dota_hero_', '')] || '',
         winrate: parseHeroWinrate(h)
       };
     });
@@ -177,6 +302,9 @@ async function loadConstants() {
 }
 
 const hero = id => state.heroes[id] || { dname: 'Герой #' + id, short: '', roles: [] };
+const heroLabel = h => h.nickname && h.nickname.toLowerCase() !== (h.dname || '').toLowerCase()
+  ? `${h.dname} (${h.nickname})`
+  : (h.dname || 'Невідомий герой');
 const heroImg = id => state.heroes[id]?.img || '';
 const itemName = k => (state.items[k] && state.items[k].dname) || k;
 const cost = k => (state.items[k] && state.items[k].cost) || 0;
@@ -1315,7 +1443,7 @@ function renderAnalysis() {
   const rk = m.radiant_score ?? 0, dk = m.dire_score ?? 0;
   const swItem = x => {
     const isCur = x.player_slot === p.player_slot;
-    return `<button class="hero-mini-btn ${isCur ? 'on' : ''}" data-slot="${x.player_slot}" aria-label="${esc(hero(x.hero_id).dname)}" aria-pressed="${isCur}" title="${esc(hero(x.hero_id).dname)}${x.personaname ? ' — ' + esc(x.personaname) : ''}">
+    return `<button class="hero-mini-btn ${isCur ? 'on' : ''}" data-slot="${x.player_slot}" aria-label="${esc(heroLabel(hero(x.hero_id)))}" aria-pressed="${isCur}" title="${esc(heroLabel(hero(x.hero_id)))}${x.personaname ? ' — ' + esc(x.personaname) : ''}">
       <img src="${heroImg(x.hero_id)}" alt="">
     </button>`;
   };
@@ -1435,8 +1563,9 @@ function renderFloatingHeroDock(m, rad, dire, curPlayer) {
     const role = detectRole(pl, pl.player_slot < 128 ? rad : dire, Math.max(1, dur / 60));
     const imp = calcPlayerImpact(pl, pl.player_slot < 128 ? rad : dire, pl.player_slot < 128 ? dire : rad, m, role);
     return `
-      <button class="dock-hero-btn ${isCur ? 'on' : ''}" data-slot="${pl.player_slot}" aria-label="${esc(H.dname)}" aria-pressed="${isCur}" title="${esc(H.dname)}${pl.personaname ? ' (' + esc(pl.personaname) + ')' : ''} · ${role.label} · ${pl.kills}/${pl.deaths}/${pl.assists} · IMP ${imp.score >= 0 ? '+' : ''}${imp.score}">
+      <button class="dock-hero-btn ${isCur ? 'on' : ''}" data-slot="${pl.player_slot}" aria-label="${esc(heroLabel(H))}" aria-pressed="${isCur}" title="${esc(heroLabel(H))}${pl.personaname ? ' (' + esc(pl.personaname) + ')' : ''} · ${role.label} · ${pl.kills}/${pl.deaths}/${pl.assists} · IMP ${imp.score >= 0 ? '+' : ''}${imp.score}">
         <img src="${heroImg(pl.hero_id)}" alt="${esc(H.dname)}">
+        <span class="dock-hero-name">${esc(H.nickname || H.dname)}</span>
         <span class="dock-hero-lvl">${pl.level || ''}</span>
       </button>
     `;
@@ -1456,7 +1585,7 @@ function renderFloatingHeroDock(m, rad, dire, curPlayer) {
       <span class="dock-side-badge dire">DIRE</span>
     </div>
     <div class="dock-sel-info">
-      <span class="dock-cur-name">${esc(hero(curPlayer.hero_id).dname)}</span>
+      <span class="dock-cur-name">${esc(heroLabel(hero(curPlayer.hero_id)))}</span>
       <button class="btn btn-sm dock-jump-btn" id="dockJumpBtn" title="Перейти до розбору героя">До героя</button>
     </div>
     <button class="dock-collapse-btn" id="dockCollapseBtn" title="Згорнути / розгорнути панель">_</button>
@@ -1508,7 +1637,7 @@ function secHeroDetailCard(ctx) {
       <img class="hero-portrait" src="${heroImg(p.hero_id)}" alt="">
       <div class="active-hero-info">
         <h2 class="active-hero-title">
-          <span>${esc(H.dname)}</span>
+          <span>${esc(heroLabel(H))}</span>
           <span class="res ${win ? 'win' : 'loss'}">${win ? 'ПЕРЕМОГА' : 'ПОРАЗКА'}</span>
           <span class="imp-tag ${imp.score >= 25 ? 'mvp' : imp.score >= 0 ? 'pos' : 'neg'}" style="margin-left:6px">IMP ${imp.score >= 0 ? '+' : ''}${imp.score}</span>
           <span class="pill ${heroVerdictCls}" style="font-size:12px;margin-left:6px">${heroVerdict}</span>
