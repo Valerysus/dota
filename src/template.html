@@ -6,31 +6,32 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Dota 2 AI Coach — аналітичний розбір матчів (OpenDota Live)</title>
-<meta name="description" content="Розбір матчів Dota 2 на основі OpenDota API">
-<meta name="theme-color" content="#1c1f26">
+<title>Dota 2 Coach — розбір матчів і план на наступну гру</title>
+<meta name="description" content="Розбір матчів Dota 2 на основі OpenDota: драфт, темп, гравці та практичний план на наступну гру.">
+<meta name="theme-color" content="#0d1110">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Dota 2 AI Coach — розбір матчів">
-<meta property="og:description" content="Розбір матчів Dota 2 на основі OpenDota API: драфт, матчапи, лейнінг, предмети, макро та план на наступну гру.">
+<meta property="og:title" content="Dota 2 Coach — розбір матчів">
+<meta property="og:description" content="Драфт, матчапи, темп і практичний план на наступну гру — за відкритими даними OpenDota.">
 <meta property="og:url" content="https://valerysus.github.io/dota/">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c1f26'/%3E%3Ctext x='32' y='42' font-family='Arial,sans-serif' font-weight='800' font-size='28' text-anchor='middle' fill='%23d08770'%3ED2%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230d1110'/%3E%3Cpath d='M18 15h28v34H18z' fill='none' stroke='%23d27b50' stroke-width='3'/%3E%3Cpath d='M24 23h16M24 32h10M24 41h16' stroke='%23d27b50' stroke-width='3'/%3E%3C/svg%3E">
 <style>
 /* {{CSS}} */
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
+  <header class="site-header">
     <div class="logo">
-      <div class="logo-mark">D2</div>
-      <div>
-        <h1>Dota 2 AI Coach</h1>
-        <small>Живий аналітичний розбір матчів OpenDota API</small>
+      <div class="logo-mark" aria-hidden="true"><span>D</span><i></i></div>
+      <div class="brand-copy">
+        <h1>Dota 2 <span>Coach</span></h1>
+        <small>POST-GAME REVIEW · OPEN DATA</small>
       </div>
     </div>
-    <div style="display:flex;gap:10px;align-items:center">
-      <button class="btn btn-sm" id="apiKeyBtn" type="button" title="Налаштування OpenDota API ключа">API Ключ</button>
-      <button class="btn btn-sm" id="themeBtn" title="Перемкнути тему">Тема: Світла</button>
+    <div class="header-tools">
+      <span class="source-label"><span class="source-dot"></span> OPENDOTA</span>
+      <button class="btn btn-sm" id="apiKeyBtn" type="button" title="Налаштування OpenDota API ключа">API ключ</button>
+      <button class="btn btn-sm" id="themeBtn" type="button" title="Перемкнути тему">Тема: Світла</button>
     </div>
   </header>
   <div id="apiKeyModal" style="display:none;margin-bottom:14px;padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:10px">
@@ -45,24 +46,54 @@
     </div>
   </div>
 
-  <section class="card">
-    <form class="search" id="searchForm" autocomplete="off" onsubmit="if(window.run) window.run(document.getElementById('q').value); return false;">
-      <input id="q" value="9036473892" placeholder="Account ID (Steam32), SteamID64 або Match ID" aria-label="ID гравця або матчу" autofocus>
-      <button class="btn btn-primary" id="searchSubmitBtn" type="submit">Проаналізувати</button>
-    </form>
-    <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <button type="button" class="btn btn-sm btn-primary" id="demoBtn" data-quick="9036473892">Спробувати демо-матч (Slark & Arc Warden)</button>
-      <span class="muted" style="font-size:12px">Миттєвий запуск без затримок навіть офлайн</span>
+  <section class="intro" aria-labelledby="introTitle">
+    <div class="intro-head">
+      <div class="intro-copy">
+        <p class="eyebrow"><span class="eyebrow-line"></span> ПІСЛЯ МАТЧУ · ДО НАСТУПНОГО</p>
+        <h2 id="introTitle">Матч закінчився.<br><em>Розбір — ні.</em></h2>
+        <p class="intro-description">Знайди момент, що змінив гру. Забери з нього конкретний фокус на наступну.</p>
+      </div>
+      <div class="intro-facts" aria-label="Що входить у розбір">
+        <div class="intro-fact">
+          <span class="fact-index">01</span>
+          <span><b>10 гравців</b><small>окремий внесок кожного</small></span>
+        </div>
+        <div class="intro-fact">
+          <span class="fact-index">02</span>
+          <span><b>Весь матч</b><small>від драфту до макро</small></span>
+        </div>
+        <div class="intro-fact">
+          <span class="fact-index">03</span>
+          <span><b>Наступний крок</b><small>план із розбору помилок</small></span>
+        </div>
+      </div>
     </div>
-    <div class="hint-line">Розпізнається автоматично: Steam32 (напр. 94054712), SteamID64 (7656119…), номер матчу (10 цифр) або посилання з OpenDota/Dotabuff/Steam.</div>
-    <div class="analysis-note"><b>Як читати оцінки:</b> IMP, ролі та шанс на перемогу — приблизні оцінки за відкритими даними й евристичними моделями. Це не офіційні оцінки Valve і не доказ порушень.</div>
-    <div class="quick-presets" id="quickPresets" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:13px">
-      <span class="muted">Швидкі розбори:</span>
-      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="9036473892">Матч 9036473892 (Slark & Arc Warden)</button>
-      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="9044569588">Матч 9044569588 (Bloodseeker)</button>
-      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="9043612326">Матч 9043612326</button>
-      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="9038892612">Матч 9038892612</button>
-      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="94054712">Topson (94054712)</button>
+
+    <div class="search-panel">
+      <div class="search-heading">
+        <label for="q">ЗНАЙТИ МАТЧ АБО ГРАВЦЯ</label>
+        <span>ПРАЦЮЄ З OPEN DOTA, DOTABUFF І STEAM</span>
+      </div>
+      <form class="search" id="searchForm" autocomplete="off" onsubmit="if(window.run) window.run(document.getElementById('q').value); return false;">
+        <div class="search-field">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 4.5 4.5"></path></svg>
+          <input id="q" value="9036473892" placeholder="Match ID, SteamID або посилання" aria-label="ID гравця або матчу" autofocus>
+        </div>
+        <button class="btn btn-primary search-submit" id="searchSubmitBtn" type="submit">
+          <span>Розібрати матч</span>
+          <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M3.5 10h12m-5-5 5 5-5 5"></path></svg>
+        </button>
+      </form>
+      <div class="search-footer">
+        <button type="button" class="demo-link" id="demoBtn" data-quick="9036473892">
+          <span class="demo-mark" aria-hidden="true">→</span>
+          Відкрити демо-матч
+          <span class="demo-id">9036473892</span>
+        </button>
+        <span class="search-hint">Steam32, SteamID64 або номер матчу — визначаються автоматично.</span>
+      </div>
+      <div class="analysis-note"><b>Про оцінки.</b> IMP, ролі й шанс на перемогу — приблизні евристики за відкритими даними, не офіційні оцінки Valve.</div>
+      <div class="quick-presets" id="quickPresets" aria-label="Нещодавні та демо-розбори"></div>
     </div>
   </section>
 

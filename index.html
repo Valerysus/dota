@@ -6,33 +6,32 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Dota 2 AI Coach — аналітичний розбір матчів (OpenDota Live)</title>
-<meta name="description" content="Розбір матчів Dota 2 на основі OpenDota API">
-<meta name="theme-color" content="#1c1f26">
+<title>Dota 2 Coach — розбір матчів і план на наступну гру</title>
+<meta name="description" content="Розбір матчів Dota 2 на основі OpenDota: драфт, темп, гравці та практичний план на наступну гру.">
+<meta name="theme-color" content="#0d1110">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Dota 2 AI Coach — розбір матчів">
-<meta property="og:description" content="Розбір матчів Dota 2 на основі OpenDota API: драфт, матчапи, лейнінг, предмети, макро та план на наступну гру.">
+<meta property="og:title" content="Dota 2 Coach — розбір матчів">
+<meta property="og:description" content="Драфт, матчапи, темп і практичний план на наступну гру — за відкритими даними OpenDota.">
 <meta property="og:url" content="https://valerysus.github.io/dota/">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c1f26'/%3E%3Ctext x='32' y='42' font-family='Arial,sans-serif' font-weight='800' font-size='28' text-anchor='middle' fill='%23d08770'%3ED2%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230d1110'/%3E%3Cpath d='M18 15h28v34H18z' fill='none' stroke='%23d27b50' stroke-width='3'/%3E%3Cpath d='M24 23h16M24 32h10M24 41h16' stroke='%23d27b50' stroke-width='3'/%3E%3C/svg%3E">
 <style>
 :root{
-  --bg:#07090e; --card:#0f131c; --card2:#151b27; --card-elevated:#1b2232; --border:#20283a; --border-light:#2c3750; --text:#f2f5fa; --muted:#8a96ad;
-  --good:#2ecc71; --warn:#f39c12; --crit:#ff334b; --accent:#ff2a44; --radius:14px;
-  --good-bg:rgba(46,204,113,.12); --warn-bg:rgba(243,156,18,.12); --crit-bg:rgba(255,51,75,.14); --info-bg:rgba(255,42,68,.10);
-  --accent-glow:rgba(255,42,68,.40); --accent-gradient:linear-gradient(135deg, #ff2a44 0%, #b81427 100%);
-  --crit-border:rgba(255,51,75,.40); --good-border:rgba(46,204,113,.35); --warn-border:rgba(243,156,18,.35);
+  --bg:#0b0f0e; --card:#121715; --card2:#181f1c; --card-elevated:#202925; --border:#28332e; --border-light:#3b4941; --text:#f0eee7; --muted:#929c93;
+  --good:#83b48b; --warn:#d9a25f; --crit:#d96e62; --accent:#d27b50; --radius:12px;
+  --good-bg:rgba(131,180,139,.12); --warn-bg:rgba(217,162,95,.12); --crit-bg:rgba(217,110,98,.13); --info-bg:rgba(210,123,80,.10);
+  --accent-glow:rgba(210,123,80,.16); --accent-gradient:linear-gradient(135deg, #d8875b 0%, #a8513c 100%);
+  --crit-border:rgba(217,110,98,.4); --good-border:rgba(131,180,139,.35); --warn-border:rgba(217,162,95,.35);
 }
 [data-theme=light]{
-  --bg:#f4f3f0; --card:#ffffff; --card2:#f8f7f4; --card-elevated:#ffffff; --border:#e2dfd7; --border-light:#d0cdc4; --text:#1e2329; --muted:#606a78;
-  --good:#27ae60; --warn:#d35400; --crit:#d63031; --accent:#d63031;
-  --good-bg:rgba(39,174,96,.09); --warn-bg:rgba(211,84,0,.09); --crit-bg:rgba(214,48,49,.09); --info-bg:rgba(214,48,49,.08);
-  --accent-glow:rgba(214,48,49,.25); --accent-gradient:linear-gradient(135deg, #d63031 0%, #b71540 100%);
-  --crit-border:rgba(214,48,49,.3); --good-border:rgba(39,174,96,.3); --warn-border:rgba(211,84,0,.3);
+  --bg:#f0efe9; --card:#fbfaf6; --card2:#f3f1ea; --card-elevated:#ffffff; --border:#dfddd3; --border-light:#c9c7bc; --text:#262a26; --muted:#6d766e;
+  --good:#438451; --warn:#a86a27; --crit:#bd5147; --accent:#a9573e;
+  --good-bg:rgba(67,132,81,.09); --warn-bg:rgba(168,106,39,.09); --crit-bg:rgba(189,81,71,.09); --info-bg:rgba(169,87,62,.08);
+  --accent-glow:rgba(169,87,62,.14); --accent-gradient:linear-gradient(135deg, #bd7250 0%, #994532 100%);
+  --crit-border:rgba(189,81,71,.3); --good-border:rgba(67,132,81,.3); --warn-border:rgba(168,106,39,.3);
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;transition:background .2s,color .2s;min-height:100vh}
-body{background-image:radial-gradient(circle at 50% -120px, rgba(230,57,70,.09) 0%, transparent 65%)}
-[data-theme=light] body{background-image:radial-gradient(circle at 50% -120px, rgba(214,48,49,.04) 0%, transparent 65%)}
+body{background-image:radial-gradient(ellipse at 82% 0%, rgba(108,124,94,.08), transparent 38%),radial-gradient(circle at 12% 0%, rgba(210,123,80,.06), transparent 32%)}
 a{color:var(--accent);text-decoration:none}
 a:hover{text-decoration:underline}
 
@@ -442,7 +441,8 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 
 @media (max-width:980px){
   .wrap{padding:16px 12px 140px}
-  .hero-dock{overflow-x:auto;justify-content:flex-start;max-width:98vw;padding:10px 14px;gap:12px}
+  .hero-dock{overflow-x:auto;scrollbar-width:none;justify-content:flex-start;max-width:98vw;padding:10px 14px;gap:12px}
+  .hero-dock::-webkit-scrollbar{display:none}
   .dock-hero-btn{width:56px;height:48px}
   .dock-sel-info{display:none}
   .two,.draft-math-grid,.imp-grid{grid-template-columns:1fr}
@@ -566,6 +566,93 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .draft-advice.pos{background:var(--good-bg);border-color:var(--good);color:var(--text)}
 .draft-advice.neg{background:var(--crit-bg);border-color:var(--crit);color:var(--text)}
 
+/* Match review entry */
+.wrap{width:min(1480px,calc(100% - 56px));max-width:1480px;padding:18px 0 120px}
+.site-header{min-height:58px;margin-bottom:24px;padding-bottom:14px;border-color:var(--border);gap:20px}
+.site-header .logo{gap:11px;min-width:0}
+.logo-mark{position:relative;width:40px;height:40px;border-radius:8px;background:var(--card);border:1px solid var(--border-light);box-shadow:none;color:var(--accent);font-family:Georgia,serif;font-size:21px}
+.logo-mark span{transform:translateX(-1px)}
+.logo-mark i{position:absolute;width:2px;height:23px;background:var(--accent);transform:rotate(22deg);opacity:.85}
+.logo-mark:hover{transform:none;box-shadow:none;border-color:var(--accent)}
+.brand-copy h1{font-size:17px;font-weight:750;letter-spacing:-.03em}
+.brand-copy h1 span{color:var(--accent)}
+.brand-copy small{margin-top:3px;font-size:10px;font-weight:700;letter-spacing:.13em;color:var(--muted)}
+.header-tools{display:flex;align-items:center;gap:8px}
+.source-label{display:inline-flex;align-items:center;gap:7px;margin-right:8px;color:var(--muted);font-size:10px;font-weight:750;letter-spacing:.12em}
+.source-dot{width:7px;height:7px;border-radius:50%;background:var(--good);box-shadow:0 0 0 3px var(--good-bg)}
+.site-header .btn{font-size:12px;padding:7px 11px;border-radius:7px;background:transparent;box-shadow:none}
+.site-header .btn:hover{transform:none;box-shadow:none;background:var(--card2)}
+.site-header #themeBtn{color:var(--muted)}
+.btn{border-radius:8px;transition:background .16s,border-color .16s,color .16s,transform .16s}
+.btn:hover{box-shadow:none;transform:translateY(-1px)}
+.btn-primary{box-shadow:none}
+.btn-primary:hover{background:linear-gradient(135deg,#e09265 0%,#b45d45 100%);border-color:var(--accent);box-shadow:none;transform:translateY(-1px)}
+.card{box-shadow:0 1px 2px rgba(0,0,0,.12);transition:border-color .18s,background .18s}
+.card:hover{box-shadow:0 3px 12px rgba(0,0,0,.12);transform:none}
+
+.intro{position:relative;overflow:hidden;margin:0 0 22px;border:1px solid var(--border);border-radius:14px;background:linear-gradient(115deg,var(--card) 0%,var(--card) 58%,color-mix(in srgb,var(--card2) 78%,var(--accent) 22%) 100%);isolation:isolate}
+.intro::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(180,190,174,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(180,190,174,.035) 1px,transparent 1px);background-size:36px 36px;mask-image:linear-gradient(90deg,transparent 36%,#000 100%)}
+.intro-head{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 270px;align-items:center;gap:36px;padding:34px 38px 30px}
+.intro-copy{max-width:760px}
+.eyebrow{display:flex;align-items:center;gap:9px;margin:0 0 13px;color:var(--muted);font-size:10px;font-weight:750;letter-spacing:.16em}
+.eyebrow-line{width:22px;height:1px;background:var(--accent)}
+.intro-copy h2{margin:0;font-family:Georgia,"Times New Roman",serif;font-size:clamp(38px,4vw,58px);font-weight:500;line-height:1.06;letter-spacing:-.045em;text-wrap:balance}
+.intro-copy h2 em{color:var(--accent);font-weight:500}
+.intro-description{max-width:480px;margin:15px 0 0;color:var(--muted);font-size:14px;line-height:1.65}
+.intro-facts{display:flex;flex-direction:column;border-left:1px solid var(--border-light);padding-left:24px}
+.intro-fact{display:flex;align-items:center;gap:13px;padding:10px 0}
+.intro-fact+.intro-fact{border-top:1px solid var(--border)}
+.fact-index{align-self:flex-start;padding-top:1px;color:var(--accent);font:12px/1.5 Georgia,serif}
+.intro-fact b,.intro-fact small{display:block}
+.intro-fact b{font-size:12px;font-weight:700;letter-spacing:.01em}
+.intro-fact small{margin-top:1px;color:var(--muted);font-size:11px}
+.search-panel{position:relative;padding:22px 38px 23px;border-top:1px solid var(--border);background:rgba(0,0,0,.12)}
+.search-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+.search-heading label,.search-heading span{font-size:10px;font-weight:750;letter-spacing:.12em}
+.search-heading label{color:var(--text)}
+.search-heading span{color:var(--muted);text-align:right}
+.search{gap:9px}
+.search-field{display:flex;align-items:center;gap:12px;flex:1;min-width:0;padding:0 14px;border:1px solid var(--border-light);border-radius:8px;background:var(--bg);transition:border-color .15s,box-shadow .15s}
+.search-field:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.search-field svg{width:19px;height:19px;flex:none;fill:none;stroke:var(--muted);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.search-field input{width:100%;min-width:0;padding:13px 0;border:0;background:transparent;color:var(--text);font:inherit;font-size:15px;outline:none}
+.search-field input::placeholder{color:var(--muted);opacity:.8}
+.search-field input:focus{border:0}
+.search .search-submit{min-height:46px;min-width:176px;justify-content:space-between;padding:0 15px;border-radius:8px;font-size:13px}
+.search-submit svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.search-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}
+.demo-link{display:inline-flex;align-items:center;gap:8px;padding:3px 0;border:0;background:none;color:var(--text);font:inherit;font-size:12px;font-weight:650;cursor:pointer}
+.demo-link:hover{color:var(--accent)}
+.demo-mark{display:grid;width:19px;height:19px;place-items:center;border:1px solid var(--border-light);border-radius:50%;color:var(--accent);font-size:13px;transition:transform .15s}
+.demo-link:hover .demo-mark{transform:translateX(2px)}
+.demo-id{padding:1px 6px;border:1px solid var(--border);border-radius:4px;color:var(--muted);font:10px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace}
+.search-hint{color:var(--muted);font-size:11px}
+.intro .analysis-note{margin-top:13px;padding:0 0 0 10px;border:0;border-left:1px solid var(--warn);border-radius:0;background:transparent;font-size:11px}
+.intro .analysis-note b{color:var(--text);font-weight:650}
+.quick-presets{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:14px;font-size:11px}
+.quick-presets .muted{margin-right:2px;font-size:11px}
+.quick-presets .pill{margin:0;padding:3px 8px;border-radius:5px;background:transparent!important;font-size:11px;transition:border-color .15s,color .15s}
+.quick-presets .pill:hover{border-color:var(--accent);color:var(--text)}
+.quick-presets #clearRecentBtn{border-style:solid!important}
+.intro .analysis-note,.search-hint{line-height:1.55}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+[data-theme=light] .intro{background:linear-gradient(115deg,var(--card) 0%,var(--card) 58%,#e9e6dc 100%)}
+[data-theme=light] .search-panel{background:rgba(33,38,33,.025)}
+[data-theme=light] .card{box-shadow:0 1px 2px rgba(32,38,33,.06)}
+[data-theme=light] .card:hover{box-shadow:0 3px 12px rgba(32,38,33,.08)}
+
+@media(max-width:900px){
+  .intro-head{grid-template-columns:1fr;gap:20px;padding:28px 28px 24px}
+  .intro-copy h2{font-size:clamp(38px,6.5vw,54px)}
+  .intro-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--border);border-left:0;padding:10px 0 0}
+  .intro-fact{align-items:flex-start;gap:8px;padding:6px 10px 6px 0}
+  .intro-fact+.intro-fact{border-top:0;border-left:1px solid var(--border);padding-left:12px}
+  .fact-index{font-size:10px}
+  .intro-fact small{font-size:10px}
+  .search-panel{padding-right:28px;padding-left:28px}
+}
+
 /* ===== Доступність ===== */
 button:focus-visible, a:focus-visible, input:focus-visible, [tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
@@ -573,9 +660,43 @@ button:focus-visible, a:focus-visible, input:focus-visible, [tabindex]:focus-vis
 
 /* ===== Мобільна верстка (<= 600px) ===== */
 @media (max-width:600px){
-  .wrap{width:100%;padding:12px 10px 110px}
+  .wrap{width:100%;padding:12px 12px 110px}
   header{flex-wrap:wrap}
-  .logo h1{font-size:18px}
+  .site-header{align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px}
+  .brand-copy h1{font-size:15px}
+  .brand-copy small{font-size:9px;letter-spacing:.09em}
+  .logo-mark{width:36px;height:36px}
+  .header-tools{gap:5px}
+  .source-label{display:none}
+  .site-header .btn{padding:6px 8px;font-size:11px}
+  .intro{border-radius:11px}
+  .intro-head{gap:16px;padding:23px 20px 18px}
+  .eyebrow{margin-bottom:10px;font-size:9px}
+  .intro-copy h2{font-size:clamp(34px,9vw,44px)}
+  .intro-description{margin-top:10px;font-size:13px}
+  .intro-facts{gap:0;padding-top:8px}
+  .intro-fact{display:block;padding:5px 7px 5px 0}
+  .intro-fact+.intro-fact{padding-left:8px}
+  .fact-index{display:block;margin-bottom:1px}
+  .intro-fact b{font-size:10px}
+  .intro-fact small{font-size:9px;line-height:1.4}
+  .search-panel{padding:16px 20px 18px}
+  .search-heading{align-items:flex-start;flex-direction:column;gap:2px}
+  .search-heading span{text-align:left;font-size:9px}
+  .search{gap:8px}
+  .search-field{min-height:44px}
+  .search-field input{font-size:14px}
+  .search .search-submit{min-height:43px;min-width:0}
+  .search-footer{align-items:flex-start;flex-direction:column;gap:5px}
+  .search-hint{font-size:10px}
+  .quick-presets{gap:6px}
+  .quick-presets .pill{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .match-top-left{width:100%;min-width:0;align-items:flex-start;gap:10px}
+  .match-top-left .match-score-badge{flex:none;padding:7px 10px}
+  .match-meta-info{flex:1;min-width:0}
+  .match-meta-title{min-width:0;flex-wrap:wrap;gap:6px}
+  .match-meta-title>span:first-child{flex-basis:100%}
+  .match-meta-sub{overflow-wrap:anywhere}
   .card{padding:14px;border-radius:12px}
   .card h2{font-size:17px;flex-wrap:wrap;gap:6px}
   .search{flex-direction:column}
@@ -609,17 +730,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, [tabindex]:focus-vis
 </head>
 <body>
 <div class="wrap">
-  <header>
+  <header class="site-header">
     <div class="logo">
-      <div class="logo-mark">D2</div>
-      <div>
-        <h1>Dota 2 AI Coach</h1>
-        <small>Живий аналітичний розбір матчів OpenDota API</small>
+      <div class="logo-mark" aria-hidden="true"><span>D</span><i></i></div>
+      <div class="brand-copy">
+        <h1>Dota 2 <span>Coach</span></h1>
+        <small>POST-GAME REVIEW · OPEN DATA</small>
       </div>
     </div>
-    <div style="display:flex;gap:10px;align-items:center">
-      <button class="btn btn-sm" id="apiKeyBtn" type="button" title="Налаштування OpenDota API ключа">API Ключ</button>
-      <button class="btn btn-sm" id="themeBtn" title="Перемкнути тему">Тема: Світла</button>
+    <div class="header-tools">
+      <span class="source-label"><span class="source-dot"></span> OPENDOTA</span>
+      <button class="btn btn-sm" id="apiKeyBtn" type="button" title="Налаштування OpenDota API ключа">API ключ</button>
+      <button class="btn btn-sm" id="themeBtn" type="button" title="Перемкнути тему">Тема: Світла</button>
     </div>
   </header>
   <div id="apiKeyModal" style="display:none;margin-bottom:14px;padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:10px">
@@ -634,24 +756,54 @@ button:focus-visible, a:focus-visible, input:focus-visible, [tabindex]:focus-vis
     </div>
   </div>
 
-  <section class="card">
-    <form class="search" id="searchForm" autocomplete="off" onsubmit="if(window.run) window.run(document.getElementById('q').value); return false;">
-      <input id="q" value="9036473892" placeholder="Account ID (Steam32), SteamID64 або Match ID" aria-label="ID гравця або матчу" autofocus>
-      <button class="btn btn-primary" id="searchSubmitBtn" type="submit">Проаналізувати</button>
-    </form>
-    <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <button type="button" class="btn btn-sm btn-primary" id="demoBtn" data-quick="9036473892">Спробувати демо-матч (Slark & Arc Warden)</button>
-      <span class="muted" style="font-size:12px">Миттєвий запуск без затримок навіть офлайн</span>
+  <section class="intro" aria-labelledby="introTitle">
+    <div class="intro-head">
+      <div class="intro-copy">
+        <p class="eyebrow"><span class="eyebrow-line"></span> ПІСЛЯ МАТЧУ · ДО НАСТУПНОГО</p>
+        <h2 id="introTitle">Матч закінчився.<br><em>Розбір — ні.</em></h2>
+        <p class="intro-description">Знайди момент, що змінив гру. Забери з нього конкретний фокус на наступну.</p>
+      </div>
+      <div class="intro-facts" aria-label="Що входить у розбір">
+        <div class="intro-fact">
+          <span class="fact-index">01</span>
+          <span><b>10 гравців</b><small>окремий внесок кожного</small></span>
+        </div>
+        <div class="intro-fact">
+          <span class="fact-index">02</span>
+          <span><b>Весь матч</b><small>від драфту до макро</small></span>
+        </div>
+        <div class="intro-fact">
+          <span class="fact-index">03</span>
+          <span><b>Наступний крок</b><small>план із розбору помилок</small></span>
+        </div>
+      </div>
     </div>
-    <div class="hint-line">Розпізнається автоматично: Steam32 (напр. 94054712), SteamID64 (7656119…), номер матчу (10 цифр) або посилання з OpenDota/Dotabuff/Steam.</div>
-    <div class="analysis-note"><b>Як читати оцінки:</b> IMP, ролі та шанс на перемогу — приблизні оцінки за відкритими даними й евристичними моделями. Це не офіційні оцінки Valve і не доказ порушень.</div>
-    <div class="quick-presets" id="quickPresets" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:13px">
-      <span class="muted">Швидкі розбори:</span>
-      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="9036473892">Матч 9036473892 (Slark & Arc Warden)</button>
-      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="9044569588">Матч 9044569588 (Bloodseeker)</button>
-      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="9043612326">Матч 9043612326</button>
-      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="9038892612">Матч 9038892612</button>
-      <button type="button" class="pill" style="cursor:pointer;background:var(--card2)" data-quick="94054712">Topson (94054712)</button>
+
+    <div class="search-panel">
+      <div class="search-heading">
+        <label for="q">ЗНАЙТИ МАТЧ АБО ГРАВЦЯ</label>
+        <span>ПРАЦЮЄ З OPEN DOTA, DOTABUFF І STEAM</span>
+      </div>
+      <form class="search" id="searchForm" autocomplete="off" onsubmit="if(window.run) window.run(document.getElementById('q').value); return false;">
+        <div class="search-field">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 4.5 4.5"></path></svg>
+          <input id="q" value="9036473892" placeholder="Match ID, SteamID або посилання" aria-label="ID гравця або матчу" autofocus>
+        </div>
+        <button class="btn btn-primary search-submit" id="searchSubmitBtn" type="submit">
+          <span>Розібрати матч</span>
+          <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M3.5 10h12m-5-5 5 5-5 5"></path></svg>
+        </button>
+      </form>
+      <div class="search-footer">
+        <button type="button" class="demo-link" id="demoBtn" data-quick="9036473892">
+          <span class="demo-mark" aria-hidden="true">→</span>
+          Відкрити демо-матч
+          <span class="demo-id">9036473892</span>
+        </button>
+        <span class="search-hint">Steam32, SteamID64 або номер матчу — визначаються автоматично.</span>
+      </div>
+      <div class="analysis-note"><b>Про оцінки.</b> IMP, ролі й шанс на перемогу — приблизні евристики за відкритими даними, не офіційні оцінки Valve.</div>
+      <div class="quick-presets" id="quickPresets" aria-label="Нещодавні та демо-розбори"></div>
     </div>
   </section>
 
