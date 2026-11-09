@@ -1259,6 +1259,107 @@ function calcPlayerImpact(pl, team, enemies, m, role) {
 
   return { score, kp, dmgShare, td, wards, tag };
 }
+
+function buildCarryTimelineData(p, m, helpers = {}) {
+  if (!p || !m || !Array.isArray(m.players)) return [];
+  const events = [];
+  const add = (time, kind, title, fact, coach, grade = 'neutral', confidence = 'Факт із телеметрії', scoreCategory = null, scoreValue = null) => {
+    if (!Number.isFinite(time) || time < 0 || time > m.duration) return;
+    events.push({ time, kind, title, fact, coach, grade, confidence, scoreCategory, scoreValue });
+  };
+  const nameOf = key => helpers.itemName ? helpers.itemName(key) : key;
+
+  const farm = Array.isArray(p.lh_t) ? p.lh_t : [];
+  for (let end = 5; end < farm.length; end += 5) {
+    const start = Math.max(0, end - 5);
+    const gained = Math.max(0, (farm[end] || 0) - (farm[start] || 0));
+    const expected = end <= 10 ? 16 : 20;
+    const grade = gained < expected * 0.45 ? 'mistake' : gained < expected * 0.75 ? 'inaccuracy' : gained >= expected * 1.15 ? 'good' : 'neutral';
+    const coach = gained < expected
+      ? 'Фарм за цей відрізок нижчий за грубий орієнтир керрі. Перевір, чи не втрачав хвилі, але врахуй бійки та тиск суперника.'
+      : gained >= expected * 1.15
+        ? 'Сильний темп добивань за відрізок. Сам по собі він не показує, чи був фарм безпечним або чи команда мала потрібну присутність.'
+        : 'Нормальний обсяг добивань за відрізок. Порівнюй його з тиском на лінії та моментами, коли команді була потрібна допомога.';
+    const scoreValue = grade === 'mistake' ? -2 : grade === 'inaccuracy' ? -1 : grade === 'good' ? 1 : 0;
+    add(end * 60, 'Фарм', `${gained} добивань за ${end - start} хв`, `За телеметрією LH зросли з ${farm[start] || 0} до ${farm[end] || 0}.`, coach, grade, 'Евристика · низька впевненість', 'Фарм', scoreValue);
+  }
+
+  const seenItems = new Set();
+  for (const purchase of (p.purchase_log || [])) {
+    const coreTimings = helpers.coreTimings || {};
+    if (!purchase || !purchase.key || !Object.prototype.hasOwnProperty.call(coreTimings, purchase.key) || seenItems.has(purchase.key)) continue;
+    seenItems.add(purchase.key);
+    const [target, reason] = coreTimings[purchase.key];
+    const delta = purchase.time - target;
+    const grade = delta <= 0 ? 'good' : delta <= 300 ? 'neutral' : delta <= 600 ? 'inaccuracy' : 'mistake';
+    const timing = delta <= 0 ? 'раніше орієнтира' : `${Math.floor(delta / 60)} хв після орієнтира`;
+    const coach = delta <= 0
+      ? `Предмет зібрано вчасно за грубим орієнтиром; ${reason}. Перевір, чи він відповідав матчапу.`
+      : `Предмет зʼявився ${timing}; орієнтир не враховує матчап і варіативну збірку. ${reason}.`;
+    const scoreValue = grade === 'mistake' ? -1.5 : grade === 'inaccuracy' ? -0.75 : grade === 'good' ? 0.75 : 0;
+    add(purchase.time, 'Предмет', nameOf(purchase.key), `Покупка зафіксована на ${Math.floor(purchase.time / 60)} хвилині.`, coach, grade, 'Евристика часу покупки · низька впевненість', 'Предмети', scoreValue);
+  }
+
+  const heroName = helpers.heroName;
+  for (const kill of (p.kills_log || [])) {
+    const victim = kill.key && heroName ? heroName(kill.key.replace('npc_dota_hero_', '')) : '';
+    add(kill.time, 'Бійка', victim ? `Убийство: ${victim}` : 'Убийство героя', 'Герой зарахований як учасник цього вбивства.', 'Це позитивний результат сутички, але лог не показує, чи саме твоя дія вирішила бій.', 'good', 'Факт результату · причинний внесок невідомий');
+  }
+
+  const deaths = p.deaths_log || [];
+  for (const death of deaths) {
+    const type = helpers.classifyDeath ? helpers.classifyDeath(death.time) : '';
+    const solo = String(type).includes('Одиночна смерть');
+    const killer = death.key && heroName ? heroName(death.key.replace('npc_dota_hero_', '')) : '';
+    const detail = killer ? ` від ${killer}` : '';
+    add(death.time, 'Смерть', `Загибель${detail}`, solo ? `${type}.` : 'Смерть зафіксована в телеметрії матчу.', solo
+      ? 'Соло-смерть поза командою часто означає втрату темпу. Перевір позицію ворогів, видимість карти й доступність телепорту перед наступним заходом.'
+      : 'Контекст командної бійки може виправдовувати обмін. Перевір, чи смерть дала команді обʼєкт або вигідне продовження.', solo ? 'mistake' : 'neutral', 'Класифікація за близькістю союзників · евристика', solo ? 'Дисципліна' : null, solo ? -2 : null);
+  }
+
+  for (const rune of (p.runes_log || [])) {
+    add(rune.time, 'Руна', 'Підібрано руну', 'Руна зафіксована в журналі гравця.', 'Може бути корисним ресурсом для темпу; без типу руни та стану ліній неможливо оцінити якість рішення.', 'neutral', 'Факт · контексту недостатньо');
+  }
+  for (const ward of [...(p.obs_log || []), ...(p.sen_log || [])]) {
+    add(ward.time, 'Огляд', 'Поставлено вард', 'Розміщення варда зафіксоване в телеметрії.', 'Для керрі це не автоматично хороший чи поганий хід: важливі безпека маршруту, місце та потреби команди.', 'neutral', 'Факт · користь позиції не вимірюється');
+  }
+
+  for (const objective of (m.objectives || [])) {
+    if (objective.player_slot !== p.player_slot) continue;
+    const key = String(objective.key || objective.type || '');
+    if (key.includes('ROSHAN') || objective.type === 'CHAT_MESSAGE_ROSHAN_KILL') {
+      add(objective.time, 'Обʼєкт', 'Участь у вбивстві Рошана', 'Матч привʼязує подію Рошана до цього гравця.', 'Сильний командний ресурс; сам лог не підтверджує, хто саме завдав останній удар чи наскільки безпечним був момент.', 'good', 'Факт обʼєкта · роль у сутичці частково невідома');
+    } else if (objective.type === 'building_kill') {
+      add(objective.time, 'Обʼєкт', 'Знесено споруду', `Подія споруди: ${key.replace('npc_dota_', '').replaceAll('_', ' ')}.`, 'Тиск на споруди перетворює перевагу на карту. Телеметрія не завжди визначає індивідуальний внесок у шкоду.', 'good', 'Факт обʼєкта · особистий внесок невідомий');
+    }
+  }
+
+  return events.sort((a, b) => a.time - b.time);
+}
+
+function scoreCarryTimeline(events) {
+  const weights = { 'Фарм': 0.4, 'Предмети': 0.2, 'Дисципліна': 0.4 };
+  const categories = {};
+  for (const event of events || []) {
+    if (!event.scoreCategory || !Number.isFinite(event.scoreValue)) continue;
+    const entry = categories[event.scoreCategory] || (categories[event.scoreCategory] = { sum: 0, count: 0 });
+    entry.sum += event.scoreValue;
+    entry.count += 1;
+  }
+  const parts = Object.entries(categories).map(([name, data]) => ({
+    name,
+    count: data.count,
+    score: Math.round(Math.max(0, Math.min(100, 50 + (data.sum / data.count) * 25))),
+    weight: weights[name] || 0
+  })).filter(part => part.weight > 0);
+  const totalWeight = parts.reduce((sum, part) => sum + part.weight, 0);
+  const score = totalWeight
+    ? Math.round(parts.reduce((sum, part) => sum + part.score * part.weight, 0) / totalWeight)
+    : null;
+  const ratedEvents = parts.reduce((sum, part) => sum + part.count, 0);
+  const confidence = parts.length >= 3 && ratedEvents >= 5 ? 'medium' : parts.length >= 2 && ratedEvents >= 3 ? 'low' : 'very-low';
+  return { score, parts, ratedEvents, confidence };
+}
 // @pure-end
 
 /* Нормативи ключових предметів */
@@ -1375,6 +1476,7 @@ function renderAnalysis() {
   // ---------- Права колонка: Глибокий розбір обраного героя ----------
   let rightCol = '';
   rightCol += secHeroDetailCard(ctx);
+  rightCol += secCarryDecisionTimeline(ctx);
   rightCol += secBenchmarks(ctx);
   rightCol += secLaning(ctx);
   rightCol += secItems(ctx);
@@ -1423,6 +1525,78 @@ function renderAnalysis() {
   // Нижні секції: Тренд і План
   renderPlan(ctx, tasks);
   renderTrendFor(p.account_id, H.dname);
+}
+
+function secCarryDecisionTimeline(ctx) {
+  const { p, m, role } = ctx;
+  const isCarry = role.pos === 1;
+  const events = isCarry ? buildCarryTimelineData(p, m, {
+    itemName,
+    coreTimings: CORE_T,
+    classifyDeath: time => classifyDeath(time, p.player_slot, m.players),
+    heroName: key => Object.values(state.heroes).find(h => h.name === `npc_dota_hero_${key}`)?.dname || key
+  }) : [];
+  const scorecard = isCarry ? scoreCarryTimeline(events) : null;
+  const scoreLabel = scorecard?.score == null ? 'Ще немає даних' : scorecard.score >= 80 ? 'Сильний матч' : scorecard.score >= 65 ? 'Добрий матч' : scorecard.score >= 45 ? 'Є над чим працювати' : 'Важкий матч';
+  const confidenceLabel = { medium: 'середня', low: 'низька', 'very-low': 'дуже низька' };
+  const scoreParts = scorecard?.parts.map(part => `
+    <div class="chess-score-part">
+      <div><span>${esc(part.name)}</span><b>${part.score}/100</b></div>
+      <div class="chess-score-track"><i style="width:${part.score}%"></i></div>
+      <small>${part.count} оцінених епізодів</small>
+    </div>`).join('') || '';
+  const quality = {
+    excellent: { icon: '!!', label: 'Сильний хід' },
+    good: { icon: '!', label: 'Добре' },
+    inaccuracy: { icon: '?!', label: 'Неточно' },
+    mistake: { icon: '?', label: 'Помилка' },
+    neutral: { icon: '·', label: 'Факт' }
+  };
+  const eventHtml = events.map((event, index) => {
+    const grade = quality[event.grade] || quality.neutral;
+    return `
+      <details class="chess-move ${event.grade}" ${index === 0 ? 'open' : ''}>
+        <summary>
+          <span class="chess-time">${fmtT(event.time)}</span>
+          <span class="chess-grade" aria-label="${grade.label}">${grade.icon}</span>
+          <span class="chess-move-title">${esc(event.title)}</span>
+          <span class="chess-move-meta">${event.scoreCategory ? `<b>${event.scoreValue > 0 ? '+' : ''}${event.scoreValue}</b>` : ''}<span class="chess-move-kind">${esc(event.kind)}</span></span>
+        </summary>
+        <div class="chess-move-detail">
+          <p>${esc(event.fact)}</p>
+          <p class="chess-coach">${esc(event.coach)}</p>
+          <span class="chess-confidence">${esc(event.confidence)}</span>
+        </div>
+      </details>`;
+  }).join('');
+
+  return `
+    <section class="card chess-review" id="chessReview">
+      <div class="chess-review-head">
+        <div>
+          <p class="chess-kicker">РОЗБІР РІШЕНЬ · ПРОТОТИП</p>
+          <h2>Партія по ходах</h2>
+        </div>
+        ${isCarry ? `<span class="chess-role">${esc(role.label)}</span>` : ''}
+      </div>
+      ${isCarry
+        ? `<div class="chess-scorecard ${scorecard.score == null ? 'empty' : scorecard.score >= 65 ? 'positive' : scorecard.score < 45 ? 'negative' : ''}">
+            <div class="chess-score-main">
+              <span class="chess-score-number">${scorecard.score == null ? '—' : scorecard.score}</span>
+              <span class="chess-score-denom">${scorecard.score == null ? '' : '/100'}</span>
+              <div><b>${scoreLabel}</b><small>${scorecard.ratedEvents} оцінених рішень · впевненість ${confidenceLabel[scorecard.confidence]}</small></div>
+            </div>
+            ${scoreParts ? `<div class="chess-score-parts">${scoreParts}</div>` : '<p class="chess-empty">Потрібні дані реплею про фарм, покупки або смерті, щоб порахувати підсумок.</p>'}
+            <p class="chess-score-method">Шкала 0–100 — зважене середнє лише оцінених епізодів: фарм 40%, предмети 20%, дисципліна 40%. Нейтральні факти не змінюють бал; відсутні категорії не вважаються нулем.</p>
+          </div>
+          <p class="chess-intro">Ключові дії керрі в хронологічному порядку. Число поруч із ходом показує його невеликий внесок у категорію, не абсолютну цінність рішення.</p>
+          <div class="chess-legend" aria-label="Шкала оцінювання">
+            <span><b class="excellent">!!</b> сильний хід</span><span><b class="good">!</b> добре</span><span><b class="inaccuracy">?!</b> неточно</span><span><b class="mistake">?</b> помилка</span><span><b class="neutral">·</b> факт</span>
+          </div>
+          <div class="chess-timeline">${eventHtml || '<p class="chess-empty">Для цього матчу немає детальних подій реплею. Доступні лише підсумкові статистики.</p>'}</div>
+          <p class="chess-disclaimer">Факт і коучингова оцінка показані окремо. Причинний вплив на перемогу без повної інформації про гру не стверджується.</p>`
+        : `<p class="chess-intro">Цей прототип оцінює керрі. Обери гравця з роллю <b>Pos 1 · Carry</b> у смузі героїв матчу, щоб побачити його ходи.</p>`}
+    </section>`;
 }
 
 /* ======================= Плаваючий док героїв ======================= */

@@ -122,6 +122,60 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .active-hero-info{flex:1;min-width:220px}
 .active-hero-title{font-size:20px;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:8px}
 
+/* Chess-style carry decision review */
+.chess-review{padding:18px}
+.chess-review-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.chess-kicker{margin:0 0 3px;color:var(--accent);font-size:10px;font-weight:800;letter-spacing:.13em}
+.chess-review-head h2{margin:0;font:500 24px/1.2 Georgia,"Times New Roman",serif;letter-spacing:-.02em}
+.chess-role{flex:none;padding:3px 8px;border:1px solid var(--border);border-radius:5px;color:var(--muted);font-size:10px}
+.chess-scorecard{margin:13px 0 11px;padding:13px;border:1px solid var(--border);border-radius:9px;background:var(--card2)}
+.chess-scorecard.positive{border-color:var(--good-border)}
+.chess-scorecard.negative{border-color:var(--crit-border)}
+.chess-score-main{display:flex;align-items:center;gap:3px}
+.chess-score-number{font:500 38px/.95 Georgia,"Times New Roman",serif;font-variant-numeric:tabular-nums}
+.chess-scorecard.positive .chess-score-number{color:var(--good)}
+.chess-scorecard.negative .chess-score-number{color:var(--crit)}
+.chess-score-denom{align-self:flex-end;margin:0 12px 3px 0;color:var(--muted);font-size:12px}
+.chess-score-main>div{display:flex;flex-direction:column;gap:2px}
+.chess-score-main>div b{font-size:12px}
+.chess-score-main>div small{color:var(--muted);font-size:10px}
+.chess-score-parts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.chess-score-part>div:first-child{display:flex;justify-content:space-between;gap:6px;color:var(--muted);font-size:10px}
+.chess-score-part>div:first-child b{color:var(--text);font-variant-numeric:tabular-nums}
+.chess-score-track{height:5px;margin:5px 0 3px;border-radius:4px;background:var(--bg);overflow:hidden}
+.chess-score-track i{display:block;height:100%;border-radius:inherit;background:var(--accent)}
+.chess-score-part small{color:var(--muted);font-size:9px}
+.chess-score-method{margin:10px 0 0;padding-top:8px;border-top:1px solid var(--border);color:var(--muted);font-size:9px;line-height:1.45}
+.chess-intro{margin:10px 0 12px;color:var(--muted);font-size:12px;line-height:1.55}
+.chess-legend{display:flex;flex-wrap:wrap;gap:6px 12px;padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);color:var(--muted);font-size:10px}
+.chess-legend span{display:inline-flex;align-items:center;gap:4px}
+.chess-legend b,.chess-grade{display:inline-grid;width:20px;height:20px;place-items:center;border:1px solid var(--border);border-radius:5px;font:800 10px/1 ui-monospace,SFMono-Regular,Consolas,monospace}
+.chess-legend b.excellent,.chess-move.excellent .chess-grade{color:var(--good);border-color:var(--good-border);background:var(--good-bg)}
+.chess-legend b.good,.chess-move.good .chess-grade{color:var(--good);border-color:var(--good-border)}
+.chess-legend b.inaccuracy,.chess-move.inaccuracy .chess-grade{color:var(--warn);border-color:var(--warn-border);background:var(--warn-bg)}
+.chess-legend b.mistake,.chess-move.mistake .chess-grade{color:var(--crit);border-color:var(--crit-border);background:var(--crit-bg)}
+.chess-legend b.neutral,.chess-move.neutral .chess-grade{color:var(--muted)}
+.chess-timeline{position:relative;margin:10px 0 0;padding-left:4px}
+.chess-timeline::before{content:"";position:absolute;top:10px;bottom:10px;left:53px;width:1px;background:var(--border-light)}
+.chess-move{position:relative;margin:0 0 7px;border:1px solid var(--border);border-radius:8px;background:var(--card2);transition:border-color .15s,background .15s}
+.chess-move[open]{border-color:var(--border-light);background:var(--card)}
+.chess-move summary{display:grid;grid-template-columns:42px 25px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:42px;padding:7px 9px;list-style:none;cursor:pointer}
+.chess-move summary::-webkit-details-marker{display:none}
+.chess-move summary::marker{content:""}
+.chess-time{color:var(--muted);font:11px/1 ui-monospace,SFMono-Regular,Consolas,monospace;font-variant-numeric:tabular-nums}
+.chess-grade{position:relative;z-index:1;background:var(--card2)}
+.chess-move-title{min-width:0;overflow:hidden;color:var(--text);font-size:12px;font-weight:700;text-overflow:ellipsis;white-space:nowrap}
+.chess-move-kind{color:var(--muted);font-size:9px}
+.chess-move-meta{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.chess-move-meta>b{color:var(--muted);font:10px/1 ui-monospace,SFMono-Regular,Consolas,monospace}
+.chess-move-detail{padding:0 12px 11px 84px;font-size:11px;line-height:1.5}
+.chess-move-detail p{margin:0 0 6px}
+.chess-move-detail p:first-child{color:var(--muted)}
+.chess-move-detail .chess-coach{color:var(--text)}
+.chess-confidence{display:inline-block;color:var(--muted);font-size:9px}
+.chess-empty{color:var(--muted);font-size:11px}
+.chess-disclaimer{margin:10px 0 0;padding-top:8px;border-top:1px solid var(--border);color:var(--muted);font-size:10px;line-height:1.5}
+
 /* Items */
 .items{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .items img{width:42px;height:30px;border-radius:5px;border:1px solid var(--border);object-fit:cover;background:var(--card2)}
@@ -681,6 +735,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, [tabindex]:focus-vis
   .match-meta-title>span:first-child{flex-basis:100%}
   .match-meta-sub{overflow-wrap:anywhere}
   .card{padding:14px;border-radius:12px}
+  .chess-review{padding:14px}
+  .chess-review-head h2{font-size:22px}
+  .chess-score-parts{grid-template-columns:1fr;gap:7px}
+  .chess-score-part{display:grid;grid-template-columns:90px 1fr 92px;align-items:center;gap:7px}
+  .chess-score-part .chess-score-track{margin:0}
+  .chess-move summary{grid-template-columns:38px 23px minmax(0,1fr) auto;gap:6px;padding:7px}
+  .chess-move-kind{display:none}
+  .chess-timeline::before{left:47px}
+  .chess-move-detail{padding-left:76px}
   .card h2{font-size:17px;flex-wrap:wrap;gap:6px}
   .search{flex-direction:column}
   .search .btn{width:100%;justify-content:center}
