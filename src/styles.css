@@ -139,12 +139,27 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .chess-score-main>div{display:flex;flex-direction:column;gap:2px}
 .chess-score-main>div b{font-size:12px}
 .chess-score-main>div small{color:var(--muted);font-size:10px}
-.chess-score-parts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.chess-score-parts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
 .chess-score-part>div:first-child{display:flex;justify-content:space-between;gap:6px;color:var(--muted);font-size:10px}
 .chess-score-part>div:first-child b{color:var(--text);font-variant-numeric:tabular-nums}
 .chess-score-track{height:5px;margin:5px 0 3px;border-radius:4px;background:var(--bg);overflow:hidden}
 .chess-score-track i{display:block;height:100%;border-radius:inherit;background:var(--accent)}
+.chess-score-track i.good{background:var(--good)}
+.chess-score-track i.warn{background:var(--warn)}
+.chess-score-track i.crit{background:var(--crit)}
 .chess-score-part small{color:var(--muted);font-size:9px}
+.chess-restrictions{margin:10px 0 0;color:var(--muted);font-size:10px}
+.chess-restrictions b{color:var(--warn)}
+.chess-farm-chart{margin:11px 0 0;padding-top:9px;border-top:1px solid var(--border)}
+.chess-farm-bars{display:flex;align-items:flex-end;gap:5px;height:56px}
+.chess-farm-bar{display:flex;flex:1;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:3px}
+.chess-farm-bar i{display:block;width:100%;border-radius:3px 3px 0 0;background:var(--muted);opacity:.55}
+.chess-farm-bar.up i{background:var(--good);opacity:.8}
+.chess-farm-bar.down i{background:var(--crit);opacity:.8}
+.chess-farm-bar em{color:var(--muted);font:9px/1 ui-monospace,SFMono-Regular,Consolas,monospace;font-style:normal;font-variant-numeric:tabular-nums}
+.chess-farm-bar.up em{color:var(--good)}
+.chess-farm-bar.down em{color:var(--crit)}
+.chess-farm-caption{display:block;margin-top:5px;color:var(--muted);font-size:9px}
 .chess-score-method{margin:10px 0 0;padding-top:8px;border-top:1px solid var(--border);color:var(--muted);font-size:9px;line-height:1.45}
 .chess-intro{margin:10px 0 12px;color:var(--muted);font-size:12px;line-height:1.55}
 .chess-legend{display:flex;flex-wrap:wrap;gap:6px 12px;padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);color:var(--muted);font-size:10px}

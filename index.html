@@ -156,12 +156,27 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .chess-score-main>div{display:flex;flex-direction:column;gap:2px}
 .chess-score-main>div b{font-size:12px}
 .chess-score-main>div small{color:var(--muted);font-size:10px}
-.chess-score-parts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.chess-score-parts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
 .chess-score-part>div:first-child{display:flex;justify-content:space-between;gap:6px;color:var(--muted);font-size:10px}
 .chess-score-part>div:first-child b{color:var(--text);font-variant-numeric:tabular-nums}
 .chess-score-track{height:5px;margin:5px 0 3px;border-radius:4px;background:var(--bg);overflow:hidden}
 .chess-score-track i{display:block;height:100%;border-radius:inherit;background:var(--accent)}
+.chess-score-track i.good{background:var(--good)}
+.chess-score-track i.warn{background:var(--warn)}
+.chess-score-track i.crit{background:var(--crit)}
 .chess-score-part small{color:var(--muted);font-size:9px}
+.chess-restrictions{margin:10px 0 0;color:var(--muted);font-size:10px}
+.chess-restrictions b{color:var(--warn)}
+.chess-farm-chart{margin:11px 0 0;padding-top:9px;border-top:1px solid var(--border)}
+.chess-farm-bars{display:flex;align-items:flex-end;gap:5px;height:56px}
+.chess-farm-bar{display:flex;flex:1;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:3px}
+.chess-farm-bar i{display:block;width:100%;border-radius:3px 3px 0 0;background:var(--muted);opacity:.55}
+.chess-farm-bar.up i{background:var(--good);opacity:.8}
+.chess-farm-bar.down i{background:var(--crit);opacity:.8}
+.chess-farm-bar em{color:var(--muted);font:9px/1 ui-monospace,SFMono-Regular,Consolas,monospace;font-style:normal;font-variant-numeric:tabular-nums}
+.chess-farm-bar.up em{color:var(--good)}
+.chess-farm-bar.down em{color:var(--crit)}
+.chess-farm-caption{display:block;margin-top:5px;color:var(--muted);font-size:9px}
 .chess-score-method{margin:10px 0 0;padding-top:8px;border-top:1px solid var(--border);color:var(--muted);font-size:9px;line-height:1.45}
 .chess-intro{margin:10px 0 12px;color:var(--muted);font-size:12px;line-height:1.55}
 .chess-legend{display:flex;flex-wrap:wrap;gap:6px 12px;padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);color:var(--muted);font-size:10px}
@@ -2198,6 +2213,83 @@ function calcPlayerImpact(pl, team, enemies, m, role) {
   return { score, kp, dmgShare, td, wards, tag };
 }
 
+/* Строгі нормативи оцінки керрі. 100% нормативу — сильний результат, не ідеал. */
+const STRICT = {
+  W: { farm: 0.35, items: 0.20, discipline: 0.30, impact: 0.15 },
+  FARM_LO: 0.70, FARM_HI: 1.40, ITEM_EARLY: -180, ITEM_LATE: 420,
+  DEATH_PEN: 15, SOLO_PEN: 15, OBJ_PEN: 10, LATE_NO_BKB_PEN: 10,
+  MIN_CATS: 3, MIN_EPISODES: 5, REQUIRE_WIN_FOR_100: true,
+  farmNorm: [[5, 25], [10, 60], [15, 100], [20, 145], [25, 195], [30, 245], [35, 295], [40, 345], [45, 395], [50, 445]]
+};
+
+function farmNormAt(min) {
+  const table = STRICT.farmNorm;
+  if (!Number.isFinite(min) || min <= 0) return 0;
+  if (min <= table[0][0]) return table[0][1] * (min / table[0][0]);
+  for (let i = 1; i < table.length; i++) {
+    const [m1, v1] = table[i - 1], [m2, v2] = table[i];
+    if (min <= m2) return v1 + (v2 - v1) * ((min - m1) / (m2 - m1));
+  }
+  const [mLast, vLast] = table[table.length - 1];
+  return vLast + (min - mLast) * 10;
+}
+
+const clamp01 = x => Math.max(0, Math.min(1, x));
+const meanOf = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0;
+
+/* Фарм: кожен 5-хвилинний відрізок окремо, без обрізання до 100%. Найслабші два відрізки важать 30%. */
+function farmScore(ratios) {
+  if (!Array.isArray(ratios) || !ratios.length) return null;
+  const pts = ratios.map(r => clamp01((r - STRICT.FARM_LO) / (STRICT.FARM_HI - STRICT.FARM_LO)));
+  const worst = [...pts].sort((a, b) => a - b).slice(0, 2);
+  return Math.round(100 * (0.7 * meanOf(pts) + 0.3 * meanOf(worst)));
+}
+
+/* Предмети: deltas — різниця «покупка мінус норматив» у секундах. Менше 3 предметів — н/д. */
+function itemScore(deltas) {
+  if (!Array.isArray(deltas) || deltas.length < 3) return null;
+  const pt = d => d <= STRICT.ITEM_EARLY ? 1
+    : d <= 0 ? 0.6 + 0.4 * (d / STRICT.ITEM_EARLY)
+      : clamp01(0.6 * (1 - d / STRICT.ITEM_LATE));
+  return Math.round(100 * meanOf(deltas.map(pt)));
+}
+
+function disciplineScore({ deaths, solo, objLoss, lateNoBkb, durationMin }) {
+  const ideal = Math.floor((Number.isFinite(durationMin) ? durationMin : 0) / 20);
+  const over = Math.max(0, (deaths || 0) - ideal);
+  return Math.max(0, 100 - over * STRICT.DEATH_PEN - (solo || 0) * STRICT.SOLO_PEN
+    - (objLoss || 0) * STRICT.OBJ_PEN - (lateNoBkb || 0) * STRICT.LATE_NO_BKB_PEN);
+}
+
+/* Вплив: перцентиль шкоди по спорудах і участь у вбивствах команди, обидва 0..1. */
+function impactScore({ towerPct, kp }) {
+  if (towerPct == null || kp == null) return null;
+  return Math.round(100 * (0.5 * clamp01((towerPct - 0.5) / 0.45) + 0.5 * clamp01((kp - 0.35) / 0.40)));
+}
+
+/* Підсумок: зважене середнє лише наявних категорій, потім жорсткі обмеження (caps). */
+function scoreStrict(parts, ctx = {}) {
+  const avail = Object.entries(parts || {}).filter(([, v]) => v != null);
+  if (!avail.length) return { score: null, caps: [], label: 'Ще немає даних' };
+  const wSum = avail.reduce((s, [k]) => s + STRICT.W[k], 0);
+  let score = Math.round(avail.reduce((s, [k, v]) => s + v * STRICT.W[k], 0) / wSum);
+  const episodes = ctx.episodes || 0;
+  const deaths = ctx.deaths || 0;
+  const ideal = ctx.ideal || 0;
+  const caps = [];
+  if (avail.length < STRICT.MIN_CATS || episodes < STRICT.MIN_EPISODES) caps.push(['Мало даних', 85]);
+  if (avail.some(([, v]) => v < 40)) caps.push(['Категорія нижче 40', 69]);
+  if ((ctx.solo || 0) >= 1) caps.push(['Є соло-смерть', 89]);
+  if (deaths >= ideal + 2) caps.push(['Смертей більше за ідеал на 2+', 79]);
+  if (STRICT.REQUIRE_WIN_FOR_100 && !ctx.win) caps.push(['Поразка', 94]);
+  if (!(avail.length === 4 && avail.every(([, v]) => v >= 98))) caps.push(['Не еталон', 97]);
+  for (const [, c] of caps) score = Math.min(score, c);
+  const band = score >= 90 ? 'Еталонна гра' : score >= 75 ? 'Сильна гра'
+    : score >= 60 ? 'Добра гра' : score >= 40 ? 'Посередня гра' : 'Слабка гра';
+  const prelim = caps.some(([n]) => n === 'Мало даних');
+  return { score, caps, label: prelim ? `Попередня оцінка: ${band}` : band };
+}
+
 function buildCarryTimelineData(p, m, helpers = {}) {
   if (!p || !m || !Array.isArray(m.players)) return [];
   const events = [];
@@ -2208,31 +2300,39 @@ function buildCarryTimelineData(p, m, helpers = {}) {
   const nameOf = key => helpers.itemName ? helpers.itemName(key) : key;
 
   const farm = Array.isArray(p.lh_t) ? p.lh_t : [];
+  const farmRatios = [];
   for (let end = 5; end < farm.length; end += 5) {
     const start = Math.max(0, end - 5);
     const gained = Math.max(0, (farm[end] || 0) - (farm[start] || 0));
-    // Строгий темп керрі: лінія → розгін → пік фарму. 100% нормативу — уже сильний результат.
-    const expected = end <= 10 ? 16 : end <= 20 ? 30 : end <= 30 ? 40 : 50;
+    // Строгий темп керрі: норматив зростає з хвилинами, тож пізній відрізок не проходить автоматично.
+    const expected = Math.max(1, farmNormAt(end) - farmNormAt(start));
     const ratio = gained / expected;
     const pct = Math.round(ratio * 100);
-    const grade = pct < 45 ? 'mistake' : pct < 75 ? 'inaccuracy' : ratio >= 1.15 ? 'good' : 'neutral';
+    const dev = pct - 100;
+    farmRatios.push(ratio);
+    const grade = pct < 45 ? 'mistake' : pct < 75 ? 'inaccuracy' : pct >= 115 ? 'good' : 'neutral';
     const coach = pct < 45
       ? 'Провал темпу: менше половини строгого нормативу керрі. Перевір, чи не втрачав хвилі й кемпи, але врахуй бійки та тиск суперника.'
       : pct < 75
         ? 'Фарм помітно нижчий за норматив керрі. Якщо тебе не ловили — втрачався час, а не ресурси: перевір маршрути фарму.'
-        : ratio >= 1.15
+        : pct >= 115
           ? 'Темп добивань вищий за норматив. Сам по собі він не показує, чи був фарм безпечним і чи була команда в бійках.'
-          : 'Виконано строгий норматив темпу. Це стабільний результат керрі, а не ідеал.';
-    add(end * 60, 'Фарм', `${gained} добивань за ${end - start} хв`, `За телеметрією LH зросли з ${farm[start] || 0} до ${farm[end] || 0} — ${pct}% нормативу (${expected} за відрізок).`, coach, grade, 'Евристика · низька впевненість', 'Фарм', Math.round(ratio * 100) / 100);
+          : pct >= 100
+            ? 'Норму виконано. Це стабільний результат керрі, а не ідеал.'
+            : 'До норми не дотягнуто: темп нижчий за строгий норматив, але не провальний.';
+    add(end * 60, 'Фарм', `${gained} добивань за ${end - start} хв`, `За телеметрією LH зросли з ${farm[start] || 0} до ${farm[end] || 0} — ${pct}% нормативу (${Math.round(expected)} за відрізок, усього ${Math.round(farmNormAt(end))} до ${end}:00). ${pct >= 100 ? 'Виконано норматив.' : pct >= 75 ? 'Трохи нижче норми.' : 'Норматив не виконано.'}`, coach, grade, 'Евристика · низька впевненість', 'Фарм', Math.round(ratio * 100) / 100);
+    events[events.length - 1].deviation = dev;
   }
 
   const seenItems = new Set();
+  const itemDeltas = [];
   for (const purchase of (p.purchase_log || [])) {
     const coreTimings = helpers.coreTimings || {};
     if (!purchase || !purchase.key || !Object.prototype.hasOwnProperty.call(coreTimings, purchase.key) || seenItems.has(purchase.key)) continue;
     seenItems.add(purchase.key);
     const [target, reason] = coreTimings[purchase.key];
     const delta = purchase.time - target;
+    itemDeltas.push(delta);
     const grade = delta <= 0 ? 'good' : delta <= 300 ? 'neutral' : delta <= 600 ? 'inaccuracy' : 'mistake';
     const timing = delta <= 0 ? 'раніше орієнтира' : `${Math.floor(delta / 60)} хв після орієнтира`;
     const coach = delta <= 0
@@ -2240,6 +2340,7 @@ function buildCarryTimelineData(p, m, helpers = {}) {
       : `Предмет зʼявився ${timing}; орієнтир не враховує матчап і варіативну збірку. ${reason}.`;
     const scoreValue = delta <= 0 ? 1 : delta <= 300 ? 0.6 : delta <= 600 ? 0.3 : 0;
     add(purchase.time, 'Предмет', nameOf(purchase.key), `Покупка зафіксована на ${Math.floor(purchase.time / 60)} хвилині.`, coach, grade, 'Евристика часу покупки · низька впевненість', 'Предмети', scoreValue);
+    events[events.length - 1].delta = delta;
   }
 
   const heroName = helpers.heroName;
@@ -2249,14 +2350,22 @@ function buildCarryTimelineData(p, m, helpers = {}) {
   }
 
   const deaths = p.deaths_log || [];
+  const purchaseLog = p.purchase_log || [];
   for (const death of deaths) {
     const type = helpers.classifyDeath ? helpers.classifyDeath(death.time) : '';
     const solo = String(type).includes('Одиночна смерть');
     const killer = death.key && heroName ? heroName(death.key.replace('npc_dota_hero_', '')) : '';
     const detail = killer ? ` від ${killer}` : '';
-    add(death.time, 'Смерть', `Загибель${detail}`, solo ? `${type}.` : 'Смерть зафіксована в телеметрії матчу.', solo
+    // Наслідок на карті: втрата вежі протягом хвилини після смерті.
+    const consequence = helpers.mapConsequence ? helpers.mapConsequence(death.time) : null;
+    const objLoss = !!consequence && /втрата вежі/i.test(consequence);
+    // Вікно без BKB: смерть після 25:00, коли захисного артефакту ще не було.
+    const lateNoBkb = death.time >= 25 * 60 && !purchaseLog.some(x => x && x.key === 'black_king_bar' && x.time <= death.time);
+    const penalty = solo ? -2 : -0.8;
+    add(death.time, 'Смерть', `Загибель${detail}`, [solo ? `${type}.` : 'Смерть у командній сутичці за телеметрією.', consequence].filter(Boolean).join(' '), solo
       ? 'Соло-смерть поза командою часто означає втрату темпу. Перевір позицію ворогів, видимість карти й доступність телепорту перед наступним заходом.'
-      : 'Контекст командної бійки може виправдовувати обмін. Перевір, чи смерть дала команді обʼєкт або вигідне продовження.', solo ? 'mistake' : 'neutral', 'Класифікація за близькістю союзників · евристика', solo ? 'Дисципліна' : null, solo ? -2 : null);
+      : 'Командна смерть дешевша за соло, але кожна втрата керрі зменшує темп. Перевір, чи обмін дав команді обʼєкт або вигідне продовження.', solo ? 'mistake' : 'inaccuracy', 'Класифікація за близькістю союзників · евристика', 'Дисципліна', penalty);
+    Object.assign(events[events.length - 1], { solo, objLoss, lateNoBkb });
   }
 
   for (const rune of (p.runes_log || [])) {
@@ -2276,33 +2385,89 @@ function buildCarryTimelineData(p, m, helpers = {}) {
     }
   }
 
+  // Вплив: перцентиль шкоди по спорудах і участь у вбивствах команди.
+  const team = Array.isArray(m.players) ? m.players.filter(x => (x.player_slot < 128) === (p.player_slot < 128)) : [];
+  const teamKills = team.reduce((s, x) => s + (x.kills || 0), 0);
+  const kp = teamKills > 0 ? ((p.kills || 0) + (p.assists || 0)) / teamKills : null;
+  const towerPct = p.benchmarks?.tower_damage?.pct != null ? p.benchmarks.tower_damage.pct : null;
+  const won = p.player_slot < 128 ? !!m.radiant_win : !m.radiant_win;
+  const impactValue = impactScore({ towerPct, kp });
+  const impactFact = [
+    towerPct == null ? null : `перцентиль шкоди по спорудах ${Math.round(towerPct * 100)}%`,
+    kp == null ? null : `участь у бійках ${Math.round(kp * 100)}%`,
+    won ? 'перемога' : 'поразка'
+  ].filter(Boolean).join(' · ');
+  add(m.duration, 'Вплив', 'Підсумковий вплив на гру', `${impactFact}.`, 'Це зведений показник за підсумковими статистиками, а не оцінка окремих рішень. Він показує, чи перетворював керрі свою гру на результат для команди.', impactValue == null ? 'neutral' : impactValue >= 70 ? 'good' : impactValue >= 40 ? 'neutral' : 'inaccuracy', 'Підсумкова статистика · евристика', 'Вплив', impactValue == null ? null : impactValue / 100);
+  Object.assign(events[events.length - 1], { towerPct, kp, win: won });
+
+  // Службовий епізод: дає підсумку точні лічильники навіть тоді, коли смертей не було.
+  events.push({
+    time: m.duration,
+    kind: 'Підсумок',
+    title: 'Підсумок матчу',
+    fact: `${deaths.length} смертей за ${Math.round(m.duration / 60)} хвилин.`,
+    coach: 'Службовий запис для підрахунку підсумку; в інтерфейсі не показується.',
+    grade: 'neutral',
+    confidence: 'Підрахунок телеметрії',
+    hidden: true,
+    deaths: deaths.length,
+    solo: events.filter(e => e.kind === 'Смерть' && e.solo).length,
+    objLoss: events.filter(e => e.kind === 'Смерть' && e.objLoss).length,
+    lateNoBkb: events.filter(e => e.kind === 'Смерть' && e.lateNoBkb).length,
+    durationMin: m.duration / 60,
+    win: won
+  });
+
   return events.sort((a, b) => a.time - b.time);
 }
 
+/* Підсумок матчу за строгими нормативами. Усі вхідні дані беруться з епізодів таймлайну. */
 function scoreCarryTimeline(events) {
-  const weights = { 'Фарм': 0.4, 'Предмети': 0.2, 'Дисципліна': 0.4 };
-  const categories = {};
-  for (const event of events || []) {
-    if (!event.scoreCategory || !Number.isFinite(event.scoreValue)) continue;
-    const entry = categories[event.scoreCategory] || (categories[event.scoreCategory] = { sum: 0, count: 0 });
-    entry.sum += event.scoreValue;
-    entry.count += 1;
-  }
-  // Фарм і предмети: середній % нормативу → бал. Дисципліна: 100 мінус 20 за кожну соло-смерть.
-  const parts = Object.entries(categories).map(([name, data]) => {
-    const avg = data.sum / data.count;
-    const score = name === 'Дисципліна'
-      ? Math.round(Math.max(0, Math.min(100, 100 + data.sum * 10)))
-      : Math.round(Math.max(0, Math.min(100, avg * 100)));
-    return { name, count: data.count, score, weight: weights[name] || 0 };
-  }).filter(part => part.weight > 0);
-  const totalWeight = parts.reduce((sum, part) => sum + part.weight, 0);
-  const score = totalWeight
-    ? Math.round(parts.reduce((sum, part) => sum + part.score * part.weight, 0) / totalWeight)
-    : null;
-  const ratedEvents = parts.reduce((sum, part) => sum + part.count, 0);
-  const confidence = parts.length >= 3 && ratedEvents >= 5 ? 'medium' : parts.length >= 2 && ratedEvents >= 3 ? 'low' : 'very-low';
-  return { score, parts, ratedEvents, confidence };
+  const list = Array.isArray(events) ? events : [];
+  const summary = list.find(e => e.kind === 'Підсумок');
+  const farmRatios = list.filter(e => e.kind === 'Фарм' && Number.isFinite(e.scoreValue)).map(e => e.scoreValue);
+  const itemDeltas = list.filter(e => e.kind === 'Предмет' && Number.isFinite(e.delta)).map(e => e.delta);
+  const deathEvents = list.filter(e => e.kind === 'Смерть');
+  const impactEvent = list.find(e => e.kind === 'Вплив');
+  const durationMin = summary ? summary.durationMin : list.reduce((max, e) => Number.isFinite(e.time) ? Math.max(max, e.time / 60) : max, 0);
+  const deaths = summary ? summary.deaths : deathEvents.length;
+  const solo = summary ? summary.solo : deathEvents.filter(e => e.solo).length;
+  const objLoss = summary ? summary.objLoss : deathEvents.filter(e => e.objLoss).length;
+  const lateNoBkb = summary ? summary.lateNoBkb : deathEvents.filter(e => e.lateNoBkb).length;
+  const win = summary ? !!summary.win : !!(impactEvent && impactEvent.win);
+
+  const parts = {
+    farm: farmScore(farmRatios),
+    items: itemScore(itemDeltas),
+    // Дисципліна оцінюється лише тоді, коли відомо, скільки смертей було насправді.
+    discipline: summary || deathEvents.length
+      ? disciplineScore({ deaths, solo, objLoss, lateNoBkb, durationMin })
+      : null,
+    impact: impactEvent ? impactScore({ towerPct: impactEvent.towerPct, kp: impactEvent.kp }) : null
+  };
+  const episodes = farmRatios.length + itemDeltas.length + deaths;
+  const result = scoreStrict(parts, {
+    episodes,
+    solo,
+    deaths,
+    ideal: Math.floor(durationMin / 20),
+    win
+  });
+  const labels = { farm: 'Фарм', items: 'Предмети', discipline: 'Дисципліна', impact: 'Вплив' };
+  const counts = {
+    farm: farmRatios.length,
+    items: itemDeltas.length,
+    discipline: deaths,
+    impact: parts.impact != null ? 1 : 0
+  };
+  return {
+    score: result.score,
+    label: result.label,
+    caps: result.caps,
+    parts: Object.keys(STRICT.W).map(key => ({ key, name: labels[key], score: parts[key], count: counts[key], weight: STRICT.W[key] })),
+    episodes,
+    farmRatios
+  };
 }
 // @pure-end
 
@@ -2472,17 +2637,40 @@ function secCarryDecisionTimeline(ctx) {
     itemName,
     coreTimings: CORE_T,
     classifyDeath: time => classifyDeath(time, p.player_slot, m.players),
+    mapConsequence: time => getMapConsequence(time, p.player_slot, m.objectives),
     heroName: key => Object.values(state.heroes).find(h => h.name === `npc_dota_hero_${key}`)?.dname || key
   });
   const scorecard = scoreCarryTimeline(events);
-  const scoreLabel = scorecard?.score == null ? 'Ще немає даних' : scorecard.score >= 80 ? 'Сильний матч' : scorecard.score >= 65 ? 'Добрий матч' : scorecard.score >= 45 ? 'Є над чим працювати' : 'Важкий матч';
-  const confidenceLabel = { medium: 'середня', low: 'низька', 'very-low': 'дуже низька' };
-  const scoreParts = scorecard?.parts.map(part => `
+  const scoreLabel = scorecard.label;
+  const bandOf = score => score >= 80 ? 'good' : score >= 50 ? 'warn' : 'crit';
+  const scoreParts = scorecard.parts.map(part => part.score == null ? `
+    <div class="chess-score-part nd">
+      <div><span>${esc(part.name)}</span><b>н/д</b></div>
+      <div class="chess-score-track"><i style="width:0%"></i></div>
+      <small>${part.count === 1 ? '1 епізод' : 'немає даних'}</small>
+    </div>` : `
     <div class="chess-score-part">
       <div><span>${esc(part.name)}</span><b>${part.score}/100</b></div>
-      <div class="chess-score-track"><i style="width:${part.score}%"></i></div>
-      <small>${part.count} оцінених епізодів</small>
-    </div>`).join('') || '';
+      <div class="chess-score-track"><i class="${bandOf(part.score)}" style="width:${part.score}%"></i></div>
+      <small>${part.count} ${part.count === 1 ? 'епізод' : part.count < 5 ? 'епізоди' : 'епізодів'}</small>
+    </div>`).join('');
+  const farmSegments = events.filter(event => event.kind === 'Фарм' && Number.isFinite(event.deviation));
+  const farmChart = farmSegments.length ? `
+    <div class="chess-farm-chart" aria-label="Відхилення темпу фарму за відрізками">
+      <div class="chess-farm-bars">
+        ${farmSegments.map(seg => {
+          const dev = seg.deviation;
+          const h = Math.max(6, Math.min(100, Math.abs(dev)));
+          return `<span class="chess-farm-bar ${dev >= 0 ? 'up' : 'down'}" title="${Math.round(seg.time / 60)} хв: ${dev >= 0 ? '+' : ''}${dev}% до норми">
+            <i style="height:${h}%"></i><em>${dev >= 0 ? '+' : ''}${dev}%</em>
+          </span>`;
+        }).join('')}
+      </div>
+      <small class="chess-farm-caption">Відхилення від строгого нормативу за кожні 5 хвилин</small>
+    </div>` : '';
+  const capsHtml = scorecard.caps.length
+    ? `<p class="chess-restrictions">Обмеження: <b>${scorecard.caps.map(([name]) => esc(name)).join(', ')}</b></p>`
+    : '';
   const quality = {
     excellent: { icon: '!!', label: 'Сильний хід' },
     good: { icon: '!', label: 'Добре' },
@@ -2490,15 +2678,18 @@ function secCarryDecisionTimeline(ctx) {
     mistake: { icon: '?', label: 'Помилка' },
     neutral: { icon: '·', label: 'Факт' }
   };
-  const eventHtml = events.map((event, index) => {
+  const eventHtml = events.filter(event => !event.hidden).map((event, index) => {
     const grade = quality[event.grade] || quality.neutral;
+    const meta = Number.isFinite(event.deviation) ? `${event.deviation >= 0 ? '+' : ''}${event.deviation}%`
+      : Number.isFinite(event.delta) ? `${event.delta >= 0 ? '+' : '-'}${fmtT(Math.abs(event.delta))}`
+        : '';
     return `
       <details class="chess-move ${event.grade}" ${index === 0 ? 'open' : ''}>
         <summary>
           <span class="chess-time">${fmtT(event.time)}</span>
           <span class="chess-grade" aria-label="${grade.label}">${grade.icon}</span>
           <span class="chess-move-title">${esc(event.title)}</span>
-          <span class="chess-move-meta">${event.scoreCategory ? `<b>${event.scoreValue > 0 ? '+' : ''}${event.scoreValue}</b>` : ''}<span class="chess-move-kind">${esc(event.kind)}</span></span>
+          <span class="chess-move-meta">${meta ? `<b class="${meta.startsWith('-') ? 'neg' : ''}">${meta}</b>` : ''}<span class="chess-move-kind">${esc(event.kind)}</span></span>
         </summary>
         <div class="chess-move-detail">
           <p>${esc(event.fact)}</p>
@@ -2517,16 +2708,18 @@ function secCarryDecisionTimeline(ctx) {
         </div>
         <span class="chess-role">${esc(role.label)}</span>
       </div>
-      <div class="chess-scorecard ${scorecard.score == null ? 'empty' : scorecard.score >= 65 ? 'positive' : scorecard.score < 45 ? 'negative' : ''}">
+      <div class="chess-scorecard ${scorecard.score == null ? 'empty' : scorecard.score >= 60 ? 'positive' : scorecard.score < 40 ? 'negative' : ''}">
             <div class="chess-score-main">
               <span class="chess-score-number">${scorecard.score == null ? '—' : scorecard.score}</span>
               <span class="chess-score-denom">${scorecard.score == null ? '' : '/100'}</span>
-              <div><b>${scoreLabel}</b><small>${scorecard.ratedEvents} оцінених рішень · впевненість ${confidenceLabel[scorecard.confidence]}</small></div>
+              <div><b>${esc(scoreLabel)}</b><small>${scorecard.episodes} оцінених епізодів</small></div>
             </div>
-            ${scoreParts ? `<div class="chess-score-parts">${scoreParts}</div>` : '<p class="chess-empty">Потрібні дані реплею про фарм, покупки або смерті, щоб порахувати підсумок.</p>'}
-            <p class="chess-score-method">Шкала 0–100 — строгі нормативи: фарм і предмети як % від нормативу темпу/таймінгу, дисципліна мінус 20 за кожну соло-смерть. Ваги: фарм 40%, предмети 20%, дисципліна 40%. Нейтральні факти не змінюють бал; відсутні категорії не вважаються нулем.</p>
+            <div class="chess-score-parts">${scoreParts}</div>
+            ${capsHtml}
+            ${farmChart}
+            <p class="chess-score-method">Шкала 0–100 за строгими нормативами. Фарм: кожен 5-хвилинний відрізок окремо як частка нормативу, найслабші два відрізки важать 30%. Предмети: відхилення покупки від орієнтира, менше трьох предметів — н/д. Дисципліна: 100 мінус 15 за кожну смерть понад ідеал (1 на 20 хв), мінус 15 за соло-смерть, мінус 10 за втрату вежі, мінус 10 за пізню смерть без BKB. Вплив: перцентиль шкоди по спорудах і участь у вбивствах. Ваги: фарм 35%, предмети 20%, дисципліна 30%, вплив 15%. Відсутні категорії не вважаються нулем, але обмежують підсумок.</p>
           </div>
-          <p class="chess-intro">Ключові дії керрі в хронологічному порядку. Число поруч із ходом показує його невеликий внесок у категорію, не абсолютну цінність рішення.</p>
+          <p class="chess-intro">Ключові дії керрі в хронологічному порядку. Число поруч із ходом — відхилення від нормативу, не абсолютна цінність рішення.</p>
           <div class="chess-legend" aria-label="Шкала оцінювання">
             <span><b class="excellent">!!</b> сильний хід</span><span><b class="good">!</b> добре</span><span><b class="inaccuracy">?!</b> неточно</span><span><b class="mistake">?</b> помилка</span><span><b class="neutral">·</b> факт</span>
           </div>
