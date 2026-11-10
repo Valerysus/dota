@@ -1688,9 +1688,10 @@ function calcDeathCost(deathTime, playerSlot, radiantGoldAdv, maxMins) {
   if (!Array.isArray(radiantGoldAdv) || !radiantGoldAdv.length) return null;
   const isRad = playerSlot < 128;
   const M = Math.floor(deathTime / 60);
-  const M2 = Math.min((maxMins != null ? maxMins : radiantGoldAdv.length - 1), M + 2);
-  const advM = isRad ? (radiantGoldAdv[M] || 0) : -(radiantGoldAdv[M] || 0);
-  const advM2 = isRad ? (radiantGoldAdv[M2] || 0) : -(radiantGoldAdv[M2] || 0);
+  const M2 = Math.min(radiantGoldAdv.length - 1, M + 2);
+  if (radiantGoldAdv[M] === undefined || radiantGoldAdv[M2] === undefined) return null;
+  const advM = isRad ? radiantGoldAdv[M] : -radiantGoldAdv[M];
+  const advM2 = isRad ? radiantGoldAdv[M2] : -radiantGoldAdv[M2];
   return advM2 - advM;
 }
 
@@ -2159,15 +2160,19 @@ function buildCarryTimelineData(p, m, helpers = {}) {
   for (let end = 5; end < farm.length; end += 5) {
     const start = Math.max(0, end - 5);
     const gained = Math.max(0, (farm[end] || 0) - (farm[start] || 0));
-    const expected = end <= 10 ? 16 : 20;
-    const grade = gained < expected * 0.45 ? 'mistake' : gained < expected * 0.75 ? 'inaccuracy' : gained >= expected * 1.15 ? 'good' : 'neutral';
-    const coach = gained < expected
-      ? 'Фарм за цей відрізок нижчий за грубий орієнтир керрі. Перевір, чи не втрачав хвилі, але врахуй бійки та тиск суперника.'
-      : gained >= expected * 1.15
-        ? 'Сильний темп добивань за відрізок. Сам по собі він не показує, чи був фарм безпечним або чи команда мала потрібну присутність.'
-        : 'Нормальний обсяг добивань за відрізок. Порівнюй його з тиском на лінії та моментами, коли команді була потрібна допомога.';
-    const scoreValue = grade === 'mistake' ? -2 : grade === 'inaccuracy' ? -1 : grade === 'good' ? 1 : 0;
-    add(end * 60, 'Фарм', `${gained} добивань за ${end - start} хв`, `За телеметрією LH зросли з ${farm[start] || 0} до ${farm[end] || 0}.`, coach, grade, 'Евристика · низька впевненість', 'Фарм', scoreValue);
+    // Строгий темп керрі: лінія → розгін → пік фарму. 100% нормативу — уже сильний результат.
+    const expected = end <= 10 ? 16 : end <= 20 ? 30 : end <= 30 ? 40 : 50;
+    const ratio = gained / expected;
+    const pct = Math.round(ratio * 100);
+    const grade = pct < 45 ? 'mistake' : pct < 75 ? 'inaccuracy' : ratio >= 1.15 ? 'good' : 'neutral';
+    const coach = pct < 45
+      ? 'Провал темпу: менше половини строгого нормативу керрі. Перевір, чи не втрачав хвилі й кемпи, але врахуй бійки та тиск суперника.'
+      : pct < 75
+        ? 'Фарм помітно нижчий за норматив керрі. Якщо тебе не ловили — втрачався час, а не ресурси: перевір маршрути фарму.'
+        : ratio >= 1.15
+          ? 'Темп добивань вищий за норматив. Сам по собі він не показує, чи був фарм безпечним і чи була команда в бійках.'
+          : 'Виконано строгий норматив темпу. Це стабільний результат керрі, а не ідеал.';
+    add(end * 60, 'Фарм', `${gained} добивань за ${end - start} хв`, `За телеметрією LH зросли з ${farm[start] || 0} до ${farm[end] || 0} — ${pct}% нормативу (${expected} за відрізок).`, coach, grade, 'Евристика · низька впевненість', 'Фарм', Math.round(ratio * 100) / 100);
   }
 
   const seenItems = new Set();
@@ -2182,7 +2187,7 @@ function buildCarryTimelineData(p, m, helpers = {}) {
     const coach = delta <= 0
       ? `Предмет зібрано вчасно за грубим орієнтиром; ${reason}. Перевір, чи він відповідав матчапу.`
       : `Предмет зʼявився ${timing}; орієнтир не враховує матчап і варіативну збірку. ${reason}.`;
-    const scoreValue = grade === 'mistake' ? -1.5 : grade === 'inaccuracy' ? -0.75 : grade === 'good' ? 0.75 : 0;
+    const scoreValue = delta <= 0 ? 1 : delta <= 300 ? 0.6 : delta <= 600 ? 0.3 : 0;
     add(purchase.time, 'Предмет', nameOf(purchase.key), `Покупка зафіксована на ${Math.floor(purchase.time / 60)} хвилині.`, coach, grade, 'Евристика часу покупки · низька впевненість', 'Предмети', scoreValue);
   }
 
@@ -2232,12 +2237,14 @@ function scoreCarryTimeline(events) {
     entry.sum += event.scoreValue;
     entry.count += 1;
   }
-  const parts = Object.entries(categories).map(([name, data]) => ({
-    name,
-    count: data.count,
-    score: Math.round(Math.max(0, Math.min(100, 50 + (data.sum / data.count) * 25))),
-    weight: weights[name] || 0
-  })).filter(part => part.weight > 0);
+  // Фарм і предмети: середній % нормативу → бал. Дисципліна: 100 мінус 20 за кожну соло-смерть.
+  const parts = Object.entries(categories).map(([name, data]) => {
+    const avg = data.sum / data.count;
+    const score = name === 'Дисципліна'
+      ? Math.round(Math.max(0, Math.min(100, 100 + data.sum * 10)))
+      : Math.round(Math.max(0, Math.min(100, avg * 100)));
+    return { name, count: data.count, score, weight: weights[name] || 0 };
+  }).filter(part => part.weight > 0);
   const totalWeight = parts.reduce((sum, part) => sum + part.weight, 0);
   const score = totalWeight
     ? Math.round(parts.reduce((sum, part) => sum + part.score * part.weight, 0) / totalWeight)
@@ -2473,7 +2480,7 @@ function secCarryDecisionTimeline(ctx) {
               <div><b>${scoreLabel}</b><small>${scorecard.ratedEvents} оцінених рішень · впевненість ${confidenceLabel[scorecard.confidence]}</small></div>
             </div>
             ${scoreParts ? `<div class="chess-score-parts">${scoreParts}</div>` : '<p class="chess-empty">Потрібні дані реплею про фарм, покупки або смерті, щоб порахувати підсумок.</p>'}
-            <p class="chess-score-method">Шкала 0–100 — зважене середнє лише оцінених епізодів: фарм 40%, предмети 20%, дисципліна 40%. Нейтральні факти не змінюють бал; відсутні категорії не вважаються нулем.</p>
+            <p class="chess-score-method">Шкала 0–100 — строгі нормативи: фарм і предмети як % від нормативу темпу/таймінгу, дисципліна мінус 20 за кожну соло-смерть. Ваги: фарм 40%, предмети 20%, дисципліна 40%. Нейтральні факти не змінюють бал; відсутні категорії не вважаються нулем.</p>
           </div>
           <p class="chess-intro">Ключові дії керрі в хронологічному порядку. Число поруч із ходом показує його невеликий внесок у категорію, не абсолютну цінність рішення.</p>
           <div class="chess-legend" aria-label="Шкала оцінювання">

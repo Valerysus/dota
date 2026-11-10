@@ -57,7 +57,10 @@ assert.ok(scorecard.parts.some(part => part.name === 'Фарм'));
 assert.ok(scorecard.parts.some(part => part.name === 'Предмети'));
 assert.ok(scorecard.parts.some(part => part.name === 'Дисципліна'));
 assert.equal(scoreCarryTimeline([{ grade: 'good' }]).score, null, 'unscored facts do not fabricate an overall grade');
-assert.equal(scoreCarryTimeline([{ scoreCategory: 'Фарм', scoreValue: 1 }]).score, 75, 'single-category score is normalized from neutral 50');
+assert.equal(scoreCarryTimeline([{ scoreCategory: 'Фарм', scoreValue: 1 }]).score, 100, 'meeting the farm benchmark scores 100');
+assert.equal(scoreCarryTimeline([{ scoreCategory: 'Фарм', scoreValue: 0.5 }]).score, 50, 'half the benchmark scores 50');
+assert.equal(scoreCarryTimeline([{ scoreCategory: 'Дисципліна', scoreValue: -2 }, { scoreCategory: 'Дисципліна', scoreValue: -2 }]).score, 60, 'each solo death costs 20 points');
+assert.equal(scoreCarryTimeline([{ scoreCategory: 'Дисципліна', scoreValue: -2 }, { scoreCategory: 'Дисципліна', scoreValue: -2 }, { scoreCategory: 'Дисципліна', scoreValue: -2 }, { scoreCategory: 'Дисципліна', scoreValue: -2 }, { scoreCategory: 'Дисципліна', scoreValue: -2 }, { scoreCategory: 'Дисципліна', scoreValue: -2 }]).score, 0, 'discipline score clamps at zero');
 
 const fixture = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'fixtures/match_9036473892.json'), 'utf8'));
 const fixturePlayer = fixture.players.find(p => p.player_slot === 2);
