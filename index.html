@@ -3682,9 +3682,13 @@ function secMatchOutcome(m, rad, dire) {
   const loseTowers = winRad ? (radTowersDead ?? losers.reduce((s, p) => s + (p.towers_killed || 0), 0))
                             : (direTowersDead ?? losers.reduce((s, p) => s + (p.towers_killed || 0), 0));
 
-  // Топ-керрі нетворси
-  const topWin = [...winners].sort((a,b) => (b.net_worth || b.gold || 0) - (a.net_worth || a.gold || 0))[0] || winners[0];
-  const topLose = [...losers].sort((a,b) => (b.net_worth || b.gold || 0) - (a.net_worth || a.gold || 0))[0] || losers[0];
+  // Керрі = гравець команди з Pos 1 за assignTeamPositions (не за нетворсом)
+  const carryOf = team => {
+    const asg = assignTeamPositions(team, mins);
+    return team.find(x => asg.get(x.player_slot) === 1) || team[0];
+  };
+  const topWin = carryOf(winners);
+  const topLose = carryOf(losers);
   const winH = hero(topWin.hero_id), loseH = hero(topLose.hero_id);
 
   // Розрахунок Stratz-style IMP Score для всіх гравців
