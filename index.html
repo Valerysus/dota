@@ -287,6 +287,11 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .plan-empty-desc{font-size:13px;color:var(--muted);max-width:560px;margin:0 auto;line-height:1.5}
 
 /* Draft styles */
+.draft-details > summary{list-style:none;cursor:pointer}
+.draft-details > summary::-webkit-details-marker{display:none}
+.draft-summary h2{display:inline-flex;align-items:center;gap:8px}
+.draft-toggle-hint{display:inline-block;margin-top:6px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.draft-details[open] .draft-toggle-hint{display:none}
 .draft-prob{display:flex;align-items:center;justify-content:space-between;margin:12px 0 8px;font-size:15px;font-weight:700}
 .draft-prob .rad-txt{color:var(--good)}
 .draft-prob .dire-txt{color:var(--crit)}
@@ -547,6 +552,13 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .death-item-reason{color:var(--text);margin-top:2px}
 .death-cost-neg{color:var(--crit)}
 .death-item-tip{color:var(--accent);font-size:13px;margin-top:5px;padding-top:4px;border-top:1px dashed rgba(255,255,255,.08)}
+
+/* =================== Sticky section nav (01-09) =================== */
+.section-nav{position:sticky;top:8px;z-index:40;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:0 auto 16px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:10px;width:max-content;max-width:100%;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.section-nav-link{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:28px;padding:0 8px;border-radius:6px;color:var(--muted);font-size:12px;font-weight:700;text-decoration:none;font-variant-numeric:tabular-nums;transition:background .15s,color .15s}
+.section-nav-link:hover{background:var(--card2);color:var(--text)}
+.section-nav-link:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#sec-01,#sec-02,#sec-03,#sec-04,#sec-05,#sec-06,#sec-07,#sec-08,#sec-09{scroll-margin-top:64px}
 
 /* =================== Macro Full-Width Section (Section 08) =================== */
 .macro-full-wrap{width:100%;margin-top:20px}
@@ -2403,8 +2415,14 @@ function renderAnalysis() {
   // ---------- Секція макро-гри на всю ширину (Widescreen Section) ----------
   const macroHtml = secMacro(ctx);
 
+  const sectionNav = `
+    <nav class="section-nav" aria-label="Розділи розбору">
+      ${['01','02','03','04','05','06','07','08','09'].map(n => `<a href="#sec-${n}" class="section-nav-link">${n}</a>`).join('')}
+    </nav>`;
+
   $('#analysis').innerHTML = `
     ${bannerHtml}
+    ${sectionNav}
     <div class="dash-full-section" style="margin-bottom:20px">
       ${draftHtml}
     </div>
@@ -2944,19 +2962,22 @@ function secDraftAnalysis(m, rad, dire) {
     `;
   };
 
-  return `<section class="card">
-    <h2><span class="sec-tag">01</span>Оцінка драфту (Stratz-style Matchup Matrix)</h2>
-    <p class="sub">Кожне число — відхилення вінрейту героя від 50% проти конкретного ворога за статистикою матчапів OpenDota (малі вибірки згладжені; «≈» — даних замало, евристика). Бал героя = сума 5 матчапів. Позиції розподілені унікально 1–5 за лінією, фармом і вардами. Заміни підбираються з пулу героїв <b>тієї самої позиції</b> за реальною сумою матчапів проти цього ворожого складу і показуються, лише якщо дають ≥ +2%.</p>
-    <p class="hint-line" style="margin-top:-8px">Покриття реальними даними: <b>${realPairs}/50</b> пар.</p>
-
-    <div class="draft-prob">
-      <span class="rad-txt">Radiant: ${probR}%</span>
-      <span style="font-size:13px;color:var(--muted);font-weight:600">Перевага піку: ${favTeam} (${favDiff > 0 ? '+' + favDiff + '%' : 'рівно'})</span>
-      <span class="dire-txt">Dire: ${probD}%</span>
-    </div>
-    <div class="draft-bar">
-      <div class="rad-fill" style="width:${probR}%"></div>
-    </div>
+  return `<section class="card" id="sec-01">
+    <details class="draft-details">
+      <summary class="draft-summary">
+        <h2><span class="sec-tag">01</span>Оцінка драфту (Stratz-style Matchup Matrix)</h2>
+        <div class="draft-prob">
+          <span class="rad-txt">Radiant: ${probR}%</span>
+          <span style="font-size:13px;color:var(--muted);font-weight:600">Перевага піку: ${favTeam} (${favDiff > 0 ? '+' + favDiff + '%' : 'рівно'})</span>
+          <span class="dire-txt">Dire: ${probD}%</span>
+        </div>
+        <div class="draft-bar">
+          <div class="rad-fill" style="width:${probR}%"></div>
+        </div>
+        <span class="draft-toggle-hint">Герої та матчапи — за кліком</span>
+      </summary>
+      <p class="sub">Кожне число — відхилення вінрейту героя від 50% проти конкретного ворога за статистикою матчапів OpenDota (малі вибірки згладжені; «≈» — даних замало, евристика). Бал героя = сума 5 матчапів. Позиції розподілені унікально 1–5 за лінією, фармом і вардами. Заміни підбираються з пулу героїв <b>тієї самої позиції</b> за реальною сумою матчапів проти цього ворожого складу і показуються, лише якщо дають ≥ +2%.</p>
+      <p class="hint-line" style="margin-top:-8px">Покриття реальними даними: <b>${realPairs}/50</b> пар.</p>
 
     <!-- Stratz-style 2-Team 5-Column Grid -->
     <div class="stratz-draft-grid">
@@ -3014,12 +3035,13 @@ function secDraftAnalysis(m, rad, dire) {
         <span class="r-val">${tpD}</span>
       </div>
     </div>
+    </details>
   </section>`;
 }
 
 function secInteractiveGraphs(m, rad, dire, curPlayer) {
   const parsed = !!m.version;
-  return `<section class="card">
+  return `<section class="card" id="sec-02">
     <h2><span class="sec-tag">02</span>Графіки темпу та динаміки матчу</h2>
     <p class="sub">Похвилинна динаміка золота, досвіду, індивідуального нетворсу 10 героїв та розрахунковий шанс на перемогу.</p>
 
@@ -3783,7 +3805,7 @@ function secMatchOutcome(m, rad, dire) {
   const winReasons = dynamicFactors.winReasons;
   const loseReasons = dynamicFactors.loseReasons;
 
-  return `<section class="card">
+  return `<section class="card" id="sec-03">
     <h2><span class="sec-tag">03</span>Розбір результату матчу (Post-Mortem)</h2>
     <p class="sub">Чому саме <b>${winTeam}</b> здобули перемогу (${scoreWin} : ${scoreLose}), а <b>${loseTeam}</b> поступилися за ${fmtT(m.duration)} гри.</p>
 
@@ -4119,7 +4141,7 @@ function secFairPlayAudit(m, rad, dire) {
   }
 
   return `
-  <section class="card" style="margin-top:20px">
+  <section class="card" id="sec-04" style="margin-top:20px">
     <div class="card-h">
       <h2><span class="sec-tag">04</span>Аудит дисципліни матчу та спортивної чесності</h2>
       <span class="muted">Об'єктивний аналіз телеметрії: абандони, тривалий AFK, патерни надмірних смертей, темп дій (APM) та досьє акаунтів. Це евристична оцінка за статистикою, а не доказ порушення.</span>
@@ -4367,7 +4389,7 @@ function secBenchmarks({ p, bm, H }) {
   ].filter(([k]) => bm[k] && bm[k].raw != null && !(['hero_healing_per_min','stuns_per_min'].includes(k) && !bm[k].raw));
 
   if (!rows.length) {
-    return `<section class="card">
+    return `<section class="card" id="sec-05">
       <h2><span class="sec-tag">05</span>Порівняння з еталоном рангу</h2>
       <p class="sub">OpenDota формує benchmarks після накопичення статистики на герої. Твої показники: GPM <b>${p.gold_per_min}</b>, XPM <b>${p.xp_per_min}</b>, KDA <b>${p.kills}/${p.deaths}/${p.assists}</b>.</p>
     </section>`;
@@ -4428,7 +4450,7 @@ function secBenchmarks({ p, bm, H }) {
     `;
   }).join('');
 
-  return `<section class="card">
+  return `<section class="card" id="sec-05">
     <h2><span class="sec-tag">05</span>Порівняння з гравцями на ${esc(H.dname)}</h2>
     <p class="sub">Перцентиль та відхилення від середнього (50% медіана) серед усіх матчів на цьому герої в OpenDota.</p>
     <div class="bm-table">
@@ -4554,7 +4576,7 @@ function secLaning(ctx) {
     out += `<p class="muted" style="font-size:13px">Детальний таймлайн покупок регену буде доступний після парсингу реплею.</p>`;
   }
 
-  return `<section class="card"><h2><span class="sec-tag">06</span>Фаза 1: Лейнінг (0:00 – 10:00)</h2>${out}</section>`;
+  return `<section class="card" id="sec-06"><h2><span class="sec-tag">06</span>Фаза 1: Лейнінг (0:00 – 10:00)</h2>${out}</section>`;
 }
 
 function secItems(ctx) {
@@ -4701,7 +4723,7 @@ function secItems(ctx) {
     out += issue('good', 'Контр-білд укомплектований', '<p>Твій інвентар містить необхідні предмети захисту та нейтралізації ключових фішок піку суперника.</p>');
   }
 
-  return `<section class="card"><h2><span class="sec-tag">07</span>Фаза 2: Таймінги предметів та контр-білд</h2>${out}</section>`;
+  return `<section class="card" id="sec-07"><h2><span class="sec-tag">07</span>Фаза 2: Таймінги предметів та контр-білд</h2>${out}</section>`;
 }
 
 
@@ -5015,7 +5037,7 @@ function secMacro(ctx) {
     </div>`;
   }
 
-  return `<section class="card macro-full-card"><h2><span class="sec-tag">08</span>Фаза 3: Макро-гра та бойова дисципліна</h2>${out}</section>`;
+  return `<section class="card macro-full-card" id="sec-08"><h2><span class="sec-tag">08</span>Фаза 3: Макро-гра та бойова дисципліна</h2>${out}</section>`;
 }
 
 /* ======================= Фаза 4: Тренд 15 ігор ======================= */
@@ -5147,7 +5169,7 @@ function renderPlan(ctx, tasks) {
   }
 
   $('#planBox').innerHTML = `
-    <section class="card plan-section">
+    <section class="card plan-section" id="sec-09">
       <div class="plan-header">
         <div>
           <h2><span class="sec-tag">09</span>План роботи над помилками на наступну гру</h2>

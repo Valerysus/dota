@@ -270,6 +270,11 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .plan-empty-desc{font-size:13px;color:var(--muted);max-width:560px;margin:0 auto;line-height:1.5}
 
 /* Draft styles */
+.draft-details > summary{list-style:none;cursor:pointer}
+.draft-details > summary::-webkit-details-marker{display:none}
+.draft-summary h2{display:inline-flex;align-items:center;gap:8px}
+.draft-toggle-hint{display:inline-block;margin-top:6px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.draft-details[open] .draft-toggle-hint{display:none}
 .draft-prob{display:flex;align-items:center;justify-content:space-between;margin:12px 0 8px;font-size:15px;font-weight:700}
 .draft-prob .rad-txt{color:var(--good)}
 .draft-prob .dire-txt{color:var(--crit)}
@@ -530,6 +535,13 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .death-item-reason{color:var(--text);margin-top:2px}
 .death-cost-neg{color:var(--crit)}
 .death-item-tip{color:var(--accent);font-size:13px;margin-top:5px;padding-top:4px;border-top:1px dashed rgba(255,255,255,.08)}
+
+/* =================== Sticky section nav (01-09) =================== */
+.section-nav{position:sticky;top:8px;z-index:40;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:0 auto 16px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:10px;width:max-content;max-width:100%;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.section-nav-link{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:28px;padding:0 8px;border-radius:6px;color:var(--muted);font-size:12px;font-weight:700;text-decoration:none;font-variant-numeric:tabular-nums;transition:background .15s,color .15s}
+.section-nav-link:hover{background:var(--card2);color:var(--text)}
+.section-nav-link:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#sec-01,#sec-02,#sec-03,#sec-04,#sec-05,#sec-06,#sec-07,#sec-08,#sec-09{scroll-margin-top:64px}
 
 /* =================== Macro Full-Width Section (Section 08) =================== */
 .macro-full-wrap{width:100%;margin-top:20px}
