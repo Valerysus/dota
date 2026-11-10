@@ -1,4 +1,4 @@
-window.onerror = function(msg, url, line, col, error) {
+﻿window.onerror = function(msg, url, line, col, error) {
   console.error("Global JS Error:", msg, "line:", line, error);
   const errBox = document.getElementById('error') || document.body;
   if (errBox) {
@@ -1718,7 +1718,6 @@ function secHeroDetailCard(ctx) {
         <h2 class="active-hero-title">
           <span>${esc(H.dname)}</span>
           <span class="res ${win ? 'win' : 'loss'}">${win ? 'ПЕРЕМОГА' : 'ПОРАЗКА'}</span>
-          <span class="imp-tag ${imp.score >= 25 ? 'mvp' : imp.score >= 0 ? 'pos' : 'neg'}" style="margin-left:6px">IMP ${imp.score >= 0 ? '+' : ''}${imp.score}</span>
           <span class="pill ${heroVerdictCls}" style="font-size:12px;margin-left:6px">${heroVerdict}</span>
         </h2>
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 0">
@@ -1727,7 +1726,6 @@ function secHeroDetailCard(ctx) {
           <span class="pill">${p.kills}/${p.deaths}/${p.assists} (KDA ${(p.kda || 0).toFixed(1)})</span>
           <span class="pill">Рівень ${p.level || '—'}</span>
         </div>
-        <div class="hint-line" style="margin-top:4px">Роль: ${role.why}. Імпакт: <b>${imp.score >= 0 ? '+' : ''}${imp.score}</b> (${heroVerdict.toLowerCase()}).</div>
       </div>
     </div>
 
@@ -2954,7 +2952,6 @@ function secMatchOutcome(m, rad, dire) {
 
 /* ======================= 04. Аудит дисципліни матчу та спортивної чесності ======================= */
 function secFairPlayAudit(m, rad, dire) {
-  const HEURISTIC_NOTE = ' Це евристична оцінка за статистикою, а не доказ порушення.';
   const NEW_ACCOUNT_ID_THRESHOLD = 1200000000; // приблизна межа, не точна дата реєстрації
   const dur = m.duration || 0;
   const mins = Math.max(1, dur / 60);
@@ -3031,7 +3028,7 @@ function secFairPlayAudit(m, rad, dire) {
         issues.push({
           level: 'warn',
           tag: `Атипова телеметрія (${h.dname})`,
-          desc: `Виняткова індивідуальна результативність на герої зі складним мікроконтролем (${hDesc}): ${kills} вбивств, ${dmg.toLocaleString()} шкоди (${Math.round(dmgShare * 100)}% команди) та ${nf(nw)} нетворсу. Рекомендується перегляд реплею для оцінки мікроконтролю та швидкості реакції.` + HEURISTIC_NOTE
+          desc: `Виняткова індивідуальна результативність на герої зі складним мікроконтролем (${hDesc}): ${kills} вбивств, ${dmg.toLocaleString()} шкоди (${Math.round(dmgShare * 100)}% команди) та ${nf(nw)} нетворсу. Рекомендується перегляд реплею для оцінки мікроконтролю та швидкості реакції.`
         });
       }
     }
@@ -3041,7 +3038,7 @@ function secFairPlayAudit(m, rad, dire) {
       issues.push({
         level: 'info',
         tag: 'Новий акаунт Steam',
-        desc: `Свіжий акаунт при високих показниках. Для оцінки дивись історію ігор нижче.` + HEURISTIC_NOTE
+        desc: `Свіжий акаунт при високих показниках. Для оцінки дивись історію ігор нижче.`
       });
     }
 
@@ -3050,7 +3047,7 @@ function secFairPlayAudit(m, rad, dire) {
       issues.push({
         level: 'warn',
         tag: 'Екстремальний внесок у шкоду команди',
-        desc: `Гравець самотужки завдав ${Math.round(dmgShare * 100)}% усієї шкоди команди за матч. Така надмірна концентрація свідчить про значну невідповідність рівня гри поточному лобі.` + HEURISTIC_NOTE
+        desc: `Гравець самотужки завдав ${Math.round(dmgShare * 100)}% усієї шкоди команди за матч. Така надмірна концентрація свідчить про значну невідповідність рівня гри поточному лобі.`
       });
     }
 
@@ -3065,7 +3062,7 @@ function secFairPlayAudit(m, rad, dire) {
       issues.push({
         level: 'warn',
         tag: 'Критична кількість смертей',
-        desc: `${deaths} смертей за ${Math.round(mins)} хв — значна втрата золота та досвіду для команди.` + HEURISTIC_NOTE
+        desc: `${deaths} смертей за ${Math.round(mins)} хв — значна втрата золота та досвіду для команди.`
       });
     }
 
@@ -3074,7 +3071,7 @@ function secFairPlayAudit(m, rad, dire) {
       issues.push({
         level: 'warn',
         tag: 'Критично низький нетворс на пізній стадії',
-        desc: `Нетворс героя склав лише ${nf(nw)} на ${Math.round(mins)}-й хвилині. Характерно для продажу предметів перед падінням трону або тотального зриву фарму.` + HEURISTIC_NOTE
+        desc: `Нетворс героя склав лише ${nf(nw)} на ${Math.round(mins)}-й хвилині. Характерно для продажу предметів перед падінням трону або тотального зриву фарму.`
       });
     }
 
@@ -3083,7 +3080,7 @@ function secFairPlayAudit(m, rad, dire) {
       issues.push({
         level: 'warn',
         tag: 'Пасивність / AFK (Низький APM)',
-        desc: `Показник темпу дій становить лише ${apm} дій/хв (норма для активного гравця — 140–300 APM). Можливий простій у лісі або на фонтані.` + HEURISTIC_NOTE
+        desc: `Показник темпу дій становить лише ${apm} дій/хв (норма для активного гравця — 140–300 APM). Можливий простій у лісі або на фонтані.`
       });
     }
 
@@ -3092,7 +3089,7 @@ function secFairPlayAudit(m, rad, dire) {
       issues.push({
         level: 'warn',
         tag: `Екстремальний темп дій (APM ${apm})`,
-        desc: `Аномально високий темп (${apm} дій/хв, понад ${(apm/60).toFixed(1)} дій щосекунди безперервно). Зустрічається у гравців високого рангу або при використанні макросів чи автоклікерів. Перевірте реплей.` + HEURISTIC_NOTE
+        desc: `Аномально високий темп (${apm} дій/хв, понад ${(apm/60).toFixed(1)} дій щосекунди безперервно). Зустрічається у гравців високого рангу або при використанні макросів чи автоклікерів. Перевірте реплей.`
       });
     }
 
@@ -3225,10 +3222,10 @@ function secFairPlayAudit(m, rad, dire) {
         `).join('')}
       </div>
 
-      <div style="margin-top:14px;background:rgba(94,129,172,.08);border:1px solid rgba(94,129,172,.25);border-radius:10px;padding:12px 16px;font-size:12.5px;line-height:1.5;color:var(--text)">
-        <div style="font-weight:750;color:var(--accent);margin-bottom:4px">Як верифікувати статус блокування гравця у Steam:</div>
-        <div>Натисніть кнопку <b>«Перевірити блокування у Steam»</b>. Якщо акаунт було заблоковано античитом Valve або патрулем Overwatch, у публічному профілі Steam відображається позначка <b>«1 game ban on record»</b> або <b>«1 VAC ban on record»</b>.</div>
-      </div>
+      <details style="margin-top:14px;background:rgba(94,129,172,.08);border:1px solid rgba(94,129,172,.25);border-radius:10px;padding:12px 16px;font-size:12.5px;line-height:1.5;color:var(--text)">
+        <summary style="font-weight:750;color:var(--accent);cursor:pointer">Як верифікувати статус блокування гравця у Steam</summary>
+        <div style="margin-top:6px">Натисніть кнопку <b>«Перевірити блокування у Steam»</b>. Якщо акаунт було заблоковано античитом Valve або патрулем Overwatch, у публічному профілі Steam відображається позначка <b>«1 game ban on record»</b> або <b>«1 VAC ban on record»</b>.</div>
+      </details>
     `;
   }
 
@@ -3236,7 +3233,7 @@ function secFairPlayAudit(m, rad, dire) {
   <section class="card" style="margin-top:20px">
     <div class="card-h">
       <h2><span class="sec-tag">04</span>Аудит дисципліни матчу та спортивної чесності</h2>
-      <span class="muted">Об'єктивний аналіз телеметрії: абандони, тривалий AFK, патерни надмірних смертей, темп дій (APM) та досьє акаунтів</span>
+      <span class="muted">Об'єктивний аналіз телеметрії: абандони, тривалий AFK, патерни надмірних смертей, темп дій (APM) та досьє акаунтів. Це евристична оцінка за статистикою, а не доказ порушення.</span>
     </div>
     ${body}
   </section>`;
@@ -3521,17 +3518,6 @@ function secBenchmarks({ p, bm, H }) {
     const diffTxt = (isGood ? '+' : '') + f(diff) + ' (' + (diffPct >= 0 ? '+' : '') + diffPct.toFixed(1) + '%)';
     const diffCls = isGood ? 'good' : (Math.abs(diffPct) > 20 ? 'crit' : 'warn');
 
-    let desc = '';
-    if (k === 'tower_damage' && val === 0) {
-      desc = `0 шкоди по спорудах (середнє на ${esc(H.dname)}: <b>${f(med)}</b>) — жодного удару по спорудах за весь матч. Критична відсутність тиску на лінії.`;
-    } else if (k === 'hero_healing_per_min' && val === 0) {
-      desc = `0 лікування союзників за хвилину (середнє: <b>${f(med)}</b>).`;
-    } else if (!isGood) {
-      desc = `Твій результат: <b>${f(val)}</b> · Середнє на ${esc(H.dname)}: <b>${f(med)}</b>. Відставання на <b style="color:var(--crit)">${f(Math.abs(diff))} (${Math.abs(diffPct).toFixed(1)}%)</b> від середнього рівня (лише ${pc(b.pct)}-й перцентиль).`;
-    } else {
-      desc = `Твій результат: <b>${f(val)}</b> · Середнє на ${esc(H.dname)}: <b>${f(med)}</b>. Перевищення на <b style="color:var(--good)">+${f(diff)} (+${diffPct.toFixed(1)}%)</b> над середнім (кращий за ${pc(b.pct)}% гравців на ${esc(H.dname)}).`;
-    }
-
     const isZeroCrit = (val === 0 && k === 'tower_damage');
     const barW = isZeroCrit ? 2 : Math.max(2, pc(b.pct));
     const barCol = isZeroCrit ? 'var(--crit)' : pctColor(b.pct);
@@ -3549,14 +3535,13 @@ function secBenchmarks({ p, bm, H }) {
           </div>
           <span class="bm-pct-txt">${pc(b.pct)}%</span>
         </div>
-        <div class="bm-desc-row">${desc}</div>
       </div>
     `;
   }).join('');
 
   return `<section class="card">
     <h2><span class="sec-tag">05</span>Порівняння з гравцями на ${esc(H.dname)}</h2>
-    <p class="sub">Перцентиль та відхилення від середнього (50% медіана) серед усіх матчів на цьому герої в OpenDota. Найслабше: <b style="color:var(--crit)">${worstTxt}</b>, найкраще: <b style="color:var(--good)">${best[1]}</b> (${pc(bm[best[0]].pct)}%).</p>
+    <p class="sub">Перцентиль та відхилення від середнього (50% медіана) серед усіх матчів на цьому герої в OpenDota.</p>
     <div class="bm-table">
       <div class="bm-head-row">
         <span>Показник</span>
@@ -3567,6 +3552,7 @@ function secBenchmarks({ p, bm, H }) {
       </div>
       ${renderedRows}
     </div>
+    <p class="sub" style="margin-top:10px">Підсумок: найслабше — <b style="color:var(--crit)">${worstTxt}</b>, найкраще — <b style="color:var(--good)">${best[1]}</b> (${pc(bm[best[0]].pct)}%).</p>
   </section>`;
 }
 
@@ -3686,15 +3672,32 @@ function secItems(ctx) {
   const { p, role, parsed, turbo, enemies, mine, deathTimes, addTask } = ctx;
   let out = '';
 
+  const log = filterComponentItems(p.purchase_log || [], state.items);
+  const firstBuy = {};
+  log.forEach(e => { if (firstBuy[e.key] == null) firstBuy[e.key] = e.time; });
+  const norms = role.core ? CORE_T : { ...Object.fromEntries(Object.entries(CORE_T).map(([k, v]) => [k, [v[0] + 300, v[1]]])), ...SUP_T };
+  const normRows = Object.keys(firstBuy).filter(k => norms[k]).map(k => ({ k, t: firstBuy[k], n: norms[k][0], why: norms[k][1] })).sort((a, b) => a.t - b.t);
+  normRows.forEach((r, i) => { r.judged = i < 3 && r.t - r.n <= 900; });
+  // Таблиця з одним рядком об'єднується зі стрічкою: дельта показується на самому предметі
+  const singleRow = normRows.length === 1 ? normRows[0] : null;
+
   const majorPurchases = filterMajorPurchases(p.purchase_log || [], state.items);
   if (majorPurchases.length) {
-    const stripNodes = majorPurchases.map(e => `
+    const stripNodes = majorPurchases.map(e => {
+      const merged = singleRow && e.key === singleRow.k ? singleRow : null;
+      const d = merged ? merged.t - merged.n : 0;
+      const dCls = !merged || !merged.judged ? '' : d <= 0 ? 'good' : d < 180 ? 'warn' : 'crit';
+      const deltaBadge = merged
+        ? `<span class="purchase-strip-delta ${dCls}">${!merged.judged ? '—' : d <= 0 ? '−' + fmtT(-d) : '+' + fmtT(d)}</span>`
+        : '';
+      return `
       <div class="purchase-strip-node" style="display:inline-flex;flex-direction:column;align-items:center;background:var(--card2);padding:6px 10px;border-radius:6px;border:1px solid var(--border);min-width:64px;flex-shrink:0">
         ${itemIcon(e.key)}
         <span style="font-size:12px;font-weight:700;margin-top:4px">${fmtT(e.time)}</span>
         <span class="muted" style="font-size:11px;max-width:80px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(itemName(e.key))}</span>
-      </div>
-    `).join('<span class="muted" style="font-size:14px;flex-shrink:0">→</span>');
+        ${deltaBadge}
+      </div>`;
+    }).join('<span class="muted" style="font-size:14px;flex-shrink:0">→</span>');
 
     out += `
       <div style="margin-bottom:16px">
@@ -3706,25 +3709,21 @@ function secItems(ctx) {
     `;
   }
 
-  const log = filterComponentItems(p.purchase_log || [], state.items);
-  const firstBuy = {};
-  log.forEach(e => { if (firstBuy[e.key] == null) firstBuy[e.key] = e.time; });
-  const norms = role.core ? CORE_T : { ...Object.fromEntries(Object.entries(CORE_T).map(([k, v]) => [k, [v[0] + 300, v[1]]])), ...SUP_T };
-
   if (turbo) {
     out += issue('info', 'Turbo-режим', `<p>У Turbo золото і досвід прискорені — аналізуються контр-предмети проти піку суперника.</p>`);
   } else if (!log.length) {
     out += issue('info', 'Таймінги очікують реплею', `<p>Без розпарсеного <code>purchase_log</code> оцінюються фінальні слоти та відповідність контр-предметів піку ворога.</p>`);
   } else {
-    const rows = Object.keys(firstBuy).filter(k => norms[k]).map(k => ({ k, t: firstBuy[k], n: norms[k][0], why: norms[k][1] })).sort((a, b) => a.t - b.t);
+    const rows = normRows;
     if (!rows.length) {
       out += issue(role.core && ctx.dur > 1500 ? 'warn' : 'info', 'Ключові предмети з нормативами відсутні', `<p>${role.core ? `За ${fmtT(ctx.dur)} гри не зібрано жодного ключового артефакту розгону (BKB, Blink, Manta, BF) — золото розпорошилося на дрібні слоти.` : 'Для саппорта це типово за наявності сейв-предметів.'}</p>`);
     } else {
-      rows.forEach((r, i) => { r.judged = i < 3 && r.t - r.n <= 900; });
-      out += `<table class="timeline"><tbody>${rows.map(r => {
-        const d = r.t - r.n, cls = !r.judged ? '' : d <= 0 ? 'good' : d < 180 ? 'warn' : 'crit';
-        return `<tr><td>${itemIcon(r.k)}${esc(itemName(r.k))}</td><td>${fmtT(r.t)}</td><td class="muted">${r.judged ? 'норма ' + fmtT(r.n) : 'ситуативний слот'}</td><td class="delta ${cls}">${!r.judged ? '<span class="muted">—</span>' : d <= 0 ? '−' + fmtT(-d) : '+' + fmtT(d)}</td></tr>`;
-      }).join('')}</tbody></table>`;
+      if (rows.length > 1) {
+        out += `<table class="timeline"><tbody>${rows.map(r => {
+          const d = r.t - r.n, cls = !r.judged ? '' : d <= 0 ? 'good' : d < 180 ? 'warn' : 'crit';
+          return `<tr><td>${itemIcon(r.k)}${esc(itemName(r.k))}</td><td>${fmtT(r.t)}</td><td class="muted">${r.judged ? 'норма ' + fmtT(r.n) : 'ситуативний слот'}</td><td class="delta ${cls}">${!r.judged ? '<span class="muted">—</span>' : d <= 0 ? '−' + fmtT(-d) : '+' + fmtT(d)}</td></tr>`;
+        }).join('')}</tbody></table>`;
+      }
       const late = rows.filter(r => r.judged && r.t - r.n >= 180).sort((a, b) => (b.t - b.n) - (a.t - a.n));
       late.slice(0, 2).forEach((r, i) => {
         const d = r.t - r.n, dB = deathTimes.filter(t => t < r.t).length;
@@ -4014,17 +4013,12 @@ function secMacro(ctx) {
   if (role.core) {
     out += `<div class="tiles macro-kpi-grid">
       ${tile('Вбивства / KDA', `${p.kills}/${d}/${p.assists} (${kdaVal})`, d >= 8 ? 'warn' : 'good')}
-      ${tile('Золото / хв (GPM)', p.gold_per_min || 0, (p.gold_per_min || 0) >= (role.pos === 1 ? 650 : 550) ? 'good' : (p.gold_per_min || 0) < 450 ? 'crit' : 'warn')}
-      ${tile('Участь у бійках', pc(kp) + '%', kp < 0.4 ? 'warn' : 'good')}
-      ${tile('Шкода по спорудах', nf(p.tower_damage || 0), (p.tower_damage || 0) < 1000 ? 'crit' : (p.tower_damage || 0) >= 3000 ? 'good' : 'warn')}
       ${tile('Шкода по героях', nf(p.hero_damage || 0), 'good')}
       ${tile('Час у таверні', `${deadMin} хв (${deadShare}%)`, deadShare > 20 ? 'crit' : deadShare > 10 ? 'warn' : 'good')}
     </div>`;
   } else {
     out += `<div class="tiles macro-kpi-grid">
       ${tile('Вбивства / KDA', `${p.kills}/${d}/${p.assists} (${kdaVal})`, d >= 9 ? 'warn' : 'good')}
-      ${tile('Участь у бійках', pc(kp) + '%', kp < 0.45 ? 'warn' : 'good')}
-      ${tile('Золото / хв (GPM)', p.gold_per_min || 0, '')}
       ${tile('Observer варди', wards.obs, wards.obs >= 8 ? 'good' : wards.obs < 4 ? 'crit' : 'warn')}
       ${tile('Sentry варди', wards.sen, wards.sen >= 10 ? 'good' : wards.sen < 4 ? 'warn' : 'good')}
       ${tile('Час у таверні', `${deadMin} хв (${deadShare}%)`, deadShare > 20 ? 'crit' : deadShare > 10 ? 'warn' : 'good')}
@@ -4105,23 +4099,21 @@ function secMacro(ctx) {
     if (wards.obs < 6) addTask(75, `Купувати Observer варди за кулдауном: ставити мінімум <b>8+ Obs та 10+ Sentry</b> за 30+ хвилин гри.`);
   }
 
-  // 5. Чекліст ключових макро-цілей (що було зроблено, а що пропущено)
-  const scorecard = buildMacroScorecard(p, m, role);
-  if (scorecard && scorecard.length) {
+  // 5. Чекліст ключових макро-цілей (лише пропуски та зони уваги)
+  const scorecard = buildMacroScorecard(p, m, role).filter(item => item.status === 'failed' || item.status === 'warn');
+  if (scorecard.length) {
     const badgeMap = {
-      done: { cls: 'good', text: 'ВИКОНАНО' },
       failed: { cls: 'crit', text: 'ПРОПУЩЕНО' },
-      warn: { cls: 'warn', text: 'ЗВЕРНИ УВАГУ' },
-      info: { cls: '', text: 'ІНФОРМАЦІЯ' }
+      warn: { cls: 'warn', text: 'ЗВЕРНИ УВАГУ' }
     };
     out += `<div class="macro-scorecard-box">
       <div class="macro-scorecard-head">
-        <span class="pill good">Аудит цілей</span>
-        <span>Чекліст ключових макро-цілей: виконання та пропуски</span>
+        <span class="pill warn">Аудит цілей</span>
+        <span>Пропущені макро-цілі та зони уваги</span>
       </div>
       <div class="macro-scorecard-grid">
         ${scorecard.map(item => {
-          const b = badgeMap[item.status] || badgeMap.info;
+          const b = badgeMap[item.status] || badgeMap.warn;
           return `<div class="macro-scorecard-card">
             <span class="pill ${b.cls}" style="flex-shrink:0;margin-right:0">${b.text}</span>
             <div style="flex:1;min-width:0">
