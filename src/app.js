@@ -1560,13 +1560,14 @@ function renderAnalysis() {
 function secCarryDecisionTimeline(ctx) {
   const { p, m, role } = ctx;
   const isCarry = role.pos === 1;
-  const events = isCarry ? buildCarryTimelineData(p, m, {
+  if (!isCarry) return '';
+  const events = buildCarryTimelineData(p, m, {
     itemName,
     coreTimings: CORE_T,
     classifyDeath: time => classifyDeath(time, p.player_slot, m.players),
     heroName: key => Object.values(state.heroes).find(h => h.name === `npc_dota_hero_${key}`)?.dname || key
-  }) : [];
-  const scorecard = isCarry ? scoreCarryTimeline(events) : null;
+  });
+  const scorecard = scoreCarryTimeline(events);
   const scoreLabel = scorecard?.score == null ? 'Ще немає даних' : scorecard.score >= 80 ? 'Сильний матч' : scorecard.score >= 65 ? 'Добрий матч' : scorecard.score >= 45 ? 'Є над чим працювати' : 'Важкий матч';
   const confidenceLabel = { medium: 'середня', low: 'низька', 'very-low': 'дуже низька' };
   const scoreParts = scorecard?.parts.map(part => `
@@ -1607,10 +1608,9 @@ function secCarryDecisionTimeline(ctx) {
           <p class="chess-kicker">РОЗБІР РІШЕНЬ · ПРОТОТИП</p>
           <h2>Партія по ходах</h2>
         </div>
-        ${isCarry ? `<span class="chess-role">${esc(role.label)}</span>` : ''}
+        <span class="chess-role">${esc(role.label)}</span>
       </div>
-      ${isCarry
-        ? `<div class="chess-scorecard ${scorecard.score == null ? 'empty' : scorecard.score >= 65 ? 'positive' : scorecard.score < 45 ? 'negative' : ''}">
+      <div class="chess-scorecard ${scorecard.score == null ? 'empty' : scorecard.score >= 65 ? 'positive' : scorecard.score < 45 ? 'negative' : ''}">
             <div class="chess-score-main">
               <span class="chess-score-number">${scorecard.score == null ? '—' : scorecard.score}</span>
               <span class="chess-score-denom">${scorecard.score == null ? '' : '/100'}</span>
@@ -1624,8 +1624,7 @@ function secCarryDecisionTimeline(ctx) {
             <span><b class="excellent">!!</b> сильний хід</span><span><b class="good">!</b> добре</span><span><b class="inaccuracy">?!</b> неточно</span><span><b class="mistake">?</b> помилка</span><span><b class="neutral">·</b> факт</span>
           </div>
           <div class="chess-timeline">${eventHtml || '<p class="chess-empty">Для цього матчу немає детальних подій реплею. Доступні лише підсумкові статистики.</p>'}</div>
-          <p class="chess-disclaimer">Факт і коучингова оцінка показані окремо. Причинний вплив на перемогу без повної інформації про гру не стверджується.</p>`
-        : `<p class="chess-intro">Цей прототип оцінює керрі. Обери гравця з роллю <b>Pos 1 · Carry</b> у смузі героїв матчу, щоб побачити його ходи.</p>`}
+          <p class="chess-disclaimer">Факт і коучингова оцінка показані окремо. Причинний вплив на перемогу без повної інформації про гру не стверджується.</p>
     </section>`;
 }
 
