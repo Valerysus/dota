@@ -46,7 +46,7 @@ function loadPureFunctions(customContext = {}) {
       3: 'Складна лінія',
       4: 'Ліс'
     },
-    IMP_HI: 10,
+    IMP_HI: 25,
     IMP_LO: -10,
     ...customContext
   };

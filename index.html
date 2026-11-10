@@ -1803,17 +1803,24 @@ function detectRole(p, team, mins) {
 // -------------------------------------------------------------------------------------------------------------
 // Загалом |    50     |  +5.3   |   +4    |       -5        |      +20        | -37 .. +55
 // Розподіл за вердиктами:
-// IMP >= 10: 42% (Вирішальний внесок), 0..9: 20% (Стабільний відіграш), -10..-1: 16% (Пасивна роль), <= -10: 22% (Критичне просідання).
-const IMP_HI = 10;
+// IMP >= 25: Вирішальний внесок, 10..24: Помітний внесок, 0..9: Стабільний відіграш, -10..-1: Пасивна роль, <= -10: Критичне просідання.
+// У програшній команді при deaths >= 8 вердикт не вище "Помітний внесок".
+const IMP_HI = 25;
+const IMP_MID = 10;
 const IMP_LO = -10;
 
-function verdictFromImp({ imp, kda, soloDeaths }) {
+function verdictFromImp({ imp, kda, soloDeaths, deaths, win }) {
   const sDeaths = soloDeaths || 0;
   if (imp <= IMP_LO || (sDeaths >= 3 && imp < 0)) {
     return 'Критичне просідання';
   }
   if (imp >= IMP_HI) {
+    // У програшній команді з 8+ смертями вердикт не вище "Помітний внесок"
+    if (win === false && (deaths || 0) >= 8) return 'Помітний внесок';
     return 'Вирішальний внесок';
+  }
+  if (imp >= IMP_MID) {
+    return 'Помітний внесок';
   }
   if (imp < 0) {
     return 'Пасивна роль';
@@ -2587,8 +2594,8 @@ function secHeroDetailCard(ctx) {
   const teamDmg = ctx.team.reduce((s, x) => s + (x.hero_damage || 0), 0);
   const dmgShare = teamDmg ? Math.round(((p.hero_damage || 0) / teamDmg) * 100) : 0;
   const imp = calcPlayerImpact(p, ctx.team, ctx.enemies, m, role);
-  const heroVerdict = verdictFromImp({ imp: imp.score, kda: p.kda, soloDeaths: ctx.soloDeaths });
-  const heroVerdictCls = heroVerdict === 'Вирішальний внесок' ? 'good' : (heroVerdict === 'Критичне просідання' ? 'crit' : (heroVerdict === 'Пасивна роль' ? 'warn' : ''));
+  const heroVerdict = verdictFromImp({ imp: imp.score, kda: p.kda, soloDeaths: ctx.soloDeaths, deaths: p.deaths || 0, win });
+  const heroVerdictCls = heroVerdict === 'Вирішальний внесок' ? 'good' : (heroVerdict === 'Критичне просідання' ? 'crit' : (heroVerdict === 'Пасивна роль' ? 'warn' : (heroVerdict === 'Помітний внесок' ? 'good' : '')));
   const wards = getWardsData(p);
 
   return `
@@ -3722,8 +3729,9 @@ function secMatchOutcome(m, rad, dire) {
     const obs = item.wards.obs;
     const kda = pl.kda || ((kills + (pl.assists || 0)) / Math.max(1, deaths));
     const itemSoloDeaths = (pl.deaths_log || []).filter(d => classifyDeath(d.time, pl.player_slot, m.players) === 'Одиночна смерть поза позицією команди').length;
-    const verdict = verdictFromImp({ imp: item.score, kda, soloDeaths: itemSoloDeaths });
-    const verdictCls = verdict === 'Вирішальний внесок' ? 'good' : (verdict === 'Критичне просідання' ? 'crit' : (verdict === 'Пасивна роль' ? 'warn' : ''));
+    const itemWin = isWin(pl.player_slot, m.radiant_win);
+    const verdict = verdictFromImp({ imp: item.score, kda, soloDeaths: itemSoloDeaths, deaths, win: itemWin });
+    const verdictCls = verdict === 'Вирішальний внесок' ? 'good' : (verdict === 'Критичне просідання' ? 'crit' : (verdict === 'Пасивна роль' ? 'warn' : (verdict === 'Помітний внесок' ? 'good' : '')));
 
     const parts = [];
     if (r.core) {

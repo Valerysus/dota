@@ -6,26 +6,36 @@ const fixtureMatch = require('./fixtures/match_9036473892.json');
 test('B4: IMP thresholds and verdictFromImp', () => {
   const ctx = loadPureFunctions();
   assert.strictEqual(typeof ctx.verdictFromImp, 'function');
-  assert.strictEqual(ctx.IMP_HI, 10);
+  assert.strictEqual(ctx.IMP_HI, 25);
   assert.strictEqual(ctx.IMP_LO, -10);
 
-  // Decisive impact (IMP >= 10)
-  assert.strictEqual(ctx.verdictFromImp({ imp: 25, kda: 5.0, soloDeaths: 0 }), 'Вирішальний внесок');
-  assert.strictEqual(ctx.verdictFromImp({ imp: 10, kda: 3.0, soloDeaths: 1 }), 'Вирішальний внесок');
+  // Decisive impact (IMP >= 25)
+  assert.strictEqual(ctx.verdictFromImp({ imp: 25, kda: 5.0, soloDeaths: 0, deaths: 2, win: true }), 'Вирішальний внесок');
+  assert.strictEqual(ctx.verdictFromImp({ imp: 40, kda: 6.0, soloDeaths: 0, deaths: 3, win: true }), 'Вирішальний внесок');
+
+  // Notable impact (10 <= IMP < 25)
+  assert.strictEqual(ctx.verdictFromImp({ imp: 10, kda: 3.0, soloDeaths: 1, deaths: 4, win: true }), 'Помітний внесок');
+  assert.strictEqual(ctx.verdictFromImp({ imp: 24, kda: 4.0, soloDeaths: 0, deaths: 2, win: true }), 'Помітний внесок');
+
+  // Losing team with 8+ deaths: verdict capped at Помітний внесок
+  assert.strictEqual(ctx.verdictFromImp({ imp: 30, kda: 5.0, soloDeaths: 0, deaths: 8, win: false }), 'Помітний внесок');
+  assert.strictEqual(ctx.verdictFromImp({ imp: 50, kda: 7.0, soloDeaths: 0, deaths: 12, win: false }), 'Помітний внесок');
+  // Losing team with fewer than 8 deaths can still be Вирішальний внесок
+  assert.strictEqual(ctx.verdictFromImp({ imp: 30, kda: 5.0, soloDeaths: 0, deaths: 7, win: false }), 'Вирішальний внесок');
 
   // Stable play (0 <= IMP < 10)
-  assert.strictEqual(ctx.verdictFromImp({ imp: 0, kda: 2.5, soloDeaths: 0 }), 'Стабільний відіграш');
-  assert.strictEqual(ctx.verdictFromImp({ imp: 9, kda: 3.2, soloDeaths: 1 }), 'Стабільний відіграш');
+  assert.strictEqual(ctx.verdictFromImp({ imp: 0, kda: 2.5, soloDeaths: 0, deaths: 5, win: true }), 'Стабільний відіграш');
+  assert.strictEqual(ctx.verdictFromImp({ imp: 9, kda: 3.2, soloDeaths: 1, deaths: 5, win: true }), 'Стабільний відіграш');
 
   // Passive role (-10 < IMP < 0, soloDeaths < 3)
-  assert.strictEqual(ctx.verdictFromImp({ imp: -1, kda: 2.0, soloDeaths: 0 }), 'Пасивна роль');
-  assert.strictEqual(ctx.verdictFromImp({ imp: -9, kda: 1.5, soloDeaths: 2 }), 'Пасивна роль');
+  assert.strictEqual(ctx.verdictFromImp({ imp: -1, kda: 2.0, soloDeaths: 0, deaths: 5, win: true }), 'Пасивна роль');
+  assert.strictEqual(ctx.verdictFromImp({ imp: -9, kda: 1.5, soloDeaths: 2, deaths: 5, win: true }), 'Пасивна роль');
 
   // Critical drop (IMP <= -10 or (IMP < 0 && soloDeaths >= 3))
-  assert.strictEqual(ctx.verdictFromImp({ imp: -10, kda: 1.0, soloDeaths: 0 }), 'Критичне просідання');
-  assert.strictEqual(ctx.verdictFromImp({ imp: -15, kda: 0.8, soloDeaths: 1 }), 'Критичне просідання');
-  assert.strictEqual(ctx.verdictFromImp({ imp: -3, kda: 1.2, soloDeaths: 3 }), 'Критичне просідання');
-  assert.strictEqual(ctx.verdictFromImp({ imp: -1, kda: 1.0, soloDeaths: 5 }), 'Критичне просідання');
+  assert.strictEqual(ctx.verdictFromImp({ imp: -10, kda: 1.0, soloDeaths: 0, deaths: 5, win: true }), 'Критичне просідання');
+  assert.strictEqual(ctx.verdictFromImp({ imp: -15, kda: 0.8, soloDeaths: 1, deaths: 5, win: true }), 'Критичне просідання');
+  assert.strictEqual(ctx.verdictFromImp({ imp: -3, kda: 1.2, soloDeaths: 3, deaths: 5, win: true }), 'Критичне просідання');
+  assert.strictEqual(ctx.verdictFromImp({ imp: -1, kda: 1.0, soloDeaths: 5, deaths: 5, win: true }), 'Критичне просідання');
 });
 
 test('B4: filterMajorPurchases filters cheap items, recipes, consumables, and duplicates', () => {
@@ -140,14 +150,14 @@ test('B4: fixture test on match 9036473892', () => {
   // Arc Warden verdict check
   const awSoloDeaths = (aw.deaths_log || []).filter(d => ctx.classifyDeath(d.time, aw.player_slot, fixtureMatch.players) === 'Одиночна смерть поза позицією команди').length;
   // Arc Warden had high kills/gold, IMP is positive
-  const verdictHigh = ctx.verdictFromImp({ imp: 49, kda: 5.8, soloDeaths: awSoloDeaths });
+  const verdictHigh = ctx.verdictFromImp({ imp: 49, kda: 5.8, soloDeaths: awSoloDeaths, deaths: aw.deaths || 0, win: true });
   assert.strictEqual(verdictHigh, 'Вирішальний внесок');
 
   // Slark (loss team, imp -2, 0 solo deaths)
-  const verdictSlark = ctx.verdictFromImp({ imp: -2, kda: 2.8, soloDeaths: 0 });
+  const verdictSlark = ctx.verdictFromImp({ imp: -2, kda: 2.8, soloDeaths: 0, deaths: 5, win: false });
   assert.strictEqual(verdictSlark, 'Пасивна роль');
 
   // Pudge (loss team, imp -10)
-  const verdictPudge = ctx.verdictFromImp({ imp: -10, kda: 1.1, soloDeaths: 1 });
+  const verdictPudge = ctx.verdictFromImp({ imp: -10, kda: 1.1, soloDeaths: 1, deaths: 9, win: false });
   assert.strictEqual(verdictPudge, 'Критичне просідання');
 });
