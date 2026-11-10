@@ -25,6 +25,16 @@ const costDire = calcDeathCost(672, 129, match.radiant_gold_adv, maxMins);
 console.log('Dire Arc Warden death cost at 672s:', costDire);
 assert.strictEqual(costDire, -2559, 'Dire death cost should be -2559');
 
+// Test 2b: Radiant death at 33:38 (t = 2018) must use adv[33] and adv[34]
+// adv[33] = -15854, adv[34] = -21151 -> -5297 (not +15854 from a missing index)
+const costLate = calcDeathCost(2018, 0, match.radiant_gold_adv, maxMins);
+console.log('Radiant player death cost at 2018s:', costLate);
+assert.strictEqual(costLate, -5297, 'Radiant death at 33:38 should be -5297');
+
+// Test 2c: out-of-range minute returns null instead of fabricating a value
+const costOob = calcDeathCost(9999, 0, match.radiant_gold_adv, maxMins);
+assert.strictEqual(costOob, null, 'death beyond gold advantage data returns null');
+
 // Test 3: index.html markup check for accessibility and data attributes
 const htmlPath = path.resolve(__dirname, '../index.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
