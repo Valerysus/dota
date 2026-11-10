@@ -42,6 +42,6 @@ const html = fs.readFileSync(htmlPath, 'utf8');
 assert.ok(html.includes('class="graph-death-dot"'), 'index.html must contain graph-death-dot class');
 assert.ok(html.includes('tabindex="0"'), 'index.html must include tabindex="0" for accessibility');
 assert.ok(html.includes('Смерть, хвилина'), 'index.html must contain aria-label definition with "Смерть, хвилина"');
-assert.ok(html.includes('Ціна:'), 'index.html must contain 2-min cost label');
+assert.ok(html.includes('Динаміка золота команди за 2 хв:'), 'index.html must contain 2-min gold swing label');
 
 console.log('All Task B3 tests passed successfully!');

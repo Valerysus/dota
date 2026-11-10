@@ -526,6 +526,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .death-item-head{display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:3px}
 .death-item-head img{width:32px;height:20px;border-radius:4px;object-fit:cover}
 .death-item-reason{color:var(--text);margin-top:2px}
+.death-cost-neg{color:var(--crit)}
 .death-item-tip{color:var(--accent);font-size:13px;margin-top:5px;padding-top:4px;border-top:1px dashed rgba(255,255,255,.08)}
 
 /* =================== Macro Full-Width Section (Section 08) =================== */

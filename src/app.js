@@ -3913,7 +3913,7 @@ function buildTacticalDeathAudit(ctx) {
 
       const cost = calcDeathCost(t, p.player_slot, ctx.m.radiant_gold_adv, mins);
       const costHtml = cost != null
-        ? `<div class="death-cost" style="font-size:12px;color:var(--muted);margin-top:4px">Ціна: <b>${cost > 0 ? '+' : ''}${nf(cost)} золота команди за 2 хв</b></div>`
+        ? `<div class="death-cost" style="font-size:12px;color:var(--muted);margin-top:4px">Динаміка золота команди за 2 хв: <b class="${cost < 0 ? 'death-cost-neg' : ''}">${cost >= 0 ? '+' : '-'}${nf(Math.abs(cost))}</b></div>`
         : '';
 
       return `

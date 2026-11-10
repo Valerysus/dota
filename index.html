@@ -543,6 +543,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .death-item-head{display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:3px}
 .death-item-head img{width:32px;height:20px;border-radius:4px;object-fit:cover}
 .death-item-reason{color:var(--text);margin-top:2px}
+.death-cost-neg{color:var(--crit)}
 .death-item-tip{color:var(--accent);font-size:13px;margin-top:5px;padding-top:4px;border-top:1px dashed rgba(255,255,255,.08)}
 
 /* =================== Macro Full-Width Section (Section 08) =================== */
@@ -4799,7 +4800,7 @@ function buildTacticalDeathAudit(ctx) {
 
       const cost = calcDeathCost(t, p.player_slot, ctx.m.radiant_gold_adv, mins);
       const costHtml = cost != null
-        ? `<div class="death-cost" style="font-size:12px;color:var(--muted);margin-top:4px">Ціна: <b>${cost > 0 ? '+' : ''}${nf(cost)} золота команди за 2 хв</b></div>`
+        ? `<div class="death-cost" style="font-size:12px;color:var(--muted);margin-top:4px">Динаміка золота команди за 2 хв: <b class="${cost < 0 ? 'death-cost-neg' : ''}">${cost >= 0 ? '+' : '-'}${nf(Math.abs(cost))}</b></div>`
         : '';
 
       return `
