@@ -1502,6 +1502,24 @@ function positionPools() {
 }
 
 // @pure-start
+const CORE_T = {
+  bfury: [14 * 60 + 30, 'критично для розгону фарму на лінії та стаках'],
+  radiance: [16 * 60 + 30, 'пасивна AOE-шкода та відхилення від атак'],
+  maelstrom: [13 * 60, 'ранній темп та зачистка пачок кріпів'],
+  blink: [12 * 60 + 30, 'ініціація та раптовий врив на ворожих героїв'],
+  black_king_bar: [22 * 60, 'імунітет до магії у командних битвах'],
+  manta: [18 * 60, 'скидання сайленсу та безпечний пуш ліній'],
+  yasha: [13 * 60, 'швидкість пересування та фарму'],
+  armlet: [11 * 60, 'ранній пік сили та виживання'],
+  diffusal_blade: [14 * 60, 'випалювання мани та уповільнення цілей'],
+  desolator: [17 * 60, 'зрізання броні та швидке взяття веж'],
+  orchid: [16 * 60, 'соло-фраги на мобільних ворожих героях']
+};
+const fmtTPure = s => {
+  if (s == null || isNaN(s)) return '—';
+  const neg = s < 0; s = Math.abs(Math.round(s));
+  return (neg ? '-' : '') + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+};
 function sanitizeTaskHtml(s) {
   return (s == null ? '' : String(s)).replace(/<(?!\/?(b|strong|i|em)>)[^>]*>/gi, m => esc(m));
 }
@@ -1839,10 +1857,11 @@ function buildActionPlan(ctx, otherTasks = []) {
   });
 
   if (hasBkbDeath) {
+    const bkbDeadline = (typeof CORE_T !== 'undefined' && CORE_T.black_king_bar) ? CORE_T.black_king_bar[0] : 22 * 60;
     candidates.push({
       priority: 1,
       topic: 'bkb',
-      text: 'Купити <b>BKB до 24:00</b> та уникати масових бійок без захисного артефакту.'
+      text: `Купити <b>BKB до ${fmtTPure(bkbDeadline)}</b> та уникати масових бійок без захисного артефакту.`
     });
     addedTopics.add('bkb');
   }
@@ -1901,19 +1920,29 @@ function buildActionPlan(ctx, otherTasks = []) {
   }
 
   // Інші конкретні завдання з попередніх блоків (якщо є вільне місце до 3)
+  const topicByContent = text => {
+    const t = String(text || '');
+    if (/BKB|Black King Bar|black_king_bar/i.test(t)) return 'bkb';
+    if (/Ward|Observer|Sentry/i.test(t)) return 'wards';
+    if (/LH|добиван/i.test(t)) return 'lh10';
+    if (/веж|споруд/i.test(t)) return 'tower_damage';
+    return 'other';
+  };
   for (const ot of otherTasks) {
     if (candidates.length >= 3) break;
     if (!ot || !ot.text) continue;
-    const isDup = (addedTopics.has('bkb') && ot.text.includes('BKB')) ||
-                  (addedTopics.has('wards') && (ot.text.includes('Ward') || ot.text.includes('Observer'))) ||
-                  (addedTopics.has('lh10') && ot.text.includes('LH')) ||
-                  (addedTopics.has('tower_damage') && (ot.text.includes('веж') || ot.text.includes('споруд')));
+    const contentTopic = topicByContent(ot.text);
+    const isDup = (addedTopics.has('bkb') && contentTopic === 'bkb') ||
+                  (addedTopics.has('wards') && contentTopic === 'wards') ||
+                  (addedTopics.has('lh10') && contentTopic === 'lh10') ||
+                  (addedTopics.has('tower_damage') && contentTopic === 'tower_damage');
     if (!isDup) {
       candidates.push({
         priority: 6,
-        topic: 'other',
+        topic: contentTopic,
         text: sanitizeTaskHtml(ot.text)
       });
+      if (contentTopic !== 'other') addedTopics.add(contentTopic);
     }
   }
 
@@ -2257,19 +2286,6 @@ function scoreCarryTimeline(events) {
 // @pure-end
 
 /* Нормативи ключових предметів */
-const CORE_T = {
-  bfury: [14 * 60 + 30, 'критично для розгону фарму на лінії та стаках'],
-  radiance: [16 * 60 + 30, 'пасивна AOE-шкода та відхилення від атак'],
-  maelstrom: [13 * 60, 'ранній темп та зачистка пачок кріпів'],
-  blink: [12 * 60 + 30, 'ініціація та раптовий врив на ворожих героїв'],
-  black_king_bar: [22 * 60, 'імунітет до магії у командних битвах'],
-  manta: [18 * 60, 'скидання сайленсу та безпечний пуш ліній'],
-  yasha: [13 * 60, 'швидкість пересування та фарму'],
-  armlet: [11 * 60, 'ранній пік сили та виживання'],
-  diffusal_blade: [14 * 60, 'випалювання мани та уповільнення цілей'],
-  desolator: [17 * 60, 'зрізання броні та швидке взяття веж'],
-  orchid: [16 * 60, 'соло-фраги на мобільних ворожих героях']
-};
 const SUP_T = {
   glimmer_cape: [16 * 60, 'невидимість та захист від магічного прокасту'],
   force_staff: [18 * 60, 'розрив дистанції та порятунок від Riki/Clock/Slark'],
@@ -4604,7 +4620,7 @@ function secItems(ctx) {
       match: h => (h.roles || []).includes('Disabler') || ['lion','shadow_shaman','bane','storm_spirit','puck','silencer','death_prophet','night_stalker'].includes(h.short),
       need: ['black_king_bar', 'manta', 'lotus_orb', 'aeon_disk', 'sange_and_yasha'],
       rec: role.core ? 'Black King Bar або Manta' : 'Lotus Orb / Glimmer Cape',
-      task: role.core ? 'Купити <b>BKB до 24:00</b>' : 'Купити <b>Lotus Orb або Glimmer Cape</b>'
+      task: role.core ? `Купити <b>BKB до ${fmtT(CORE_T.black_king_bar[0])}</b>` : 'Купити <b>Lotus Orb або Glimmer Cape</b>'
     },
     {
       why: 'Ворожа регенерація та самолікування',
@@ -5076,10 +5092,11 @@ function renderPlan(ctx, tasks) {
     : 'Критичних зауважень немає';
 
   const topicLabels = {
-    bkb: 'Артефакти & Захист',
+    bkb: 'Артефакти та захист',
     tower_damage: 'Макро & Пуш',
     solo_deaths: 'Позиціонування',
     lh10: 'Лейнінг & Фарм',
+    wards: 'Огляд & Вардинг',
     support_vision: 'Огляд & Вардинг',
     support_deaths: 'Виживання',
     pos_distance: 'Дистанція у бійках'
